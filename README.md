@@ -4,6 +4,8 @@
 > into the whole suite, launches each sibling from one tile page, and puts
 > board files where the wall can read them - no ports memorized, no SCP.
 
+![Four LaunchCanvas views, four themes - the tile launcher on Slate, the in-app Quickstart on Parchment, the login page on Nocturne, and multi-user Settings on Sage](docs/hero-quadrants.png)
+
 LaunchCanvas is the sixth member of the Canvas family:
 [**CrossCanvas**](https://github.com/RootSwitch/CrossCanvas) draws your
 network, [**PingCanvas**](https://github.com/RootSwitch/PingCanvas) turns

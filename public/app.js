@@ -236,7 +236,7 @@
         <div class="panel">
             <h2>Single sign-on</h2>
             <div class="section-note">${s.sso
-                ? 'Active. Logging in here also signs you into SNMPCanvas, SyslogCanvas, and AlertCanvas (they share this deployment\'s SUITE_SECRET). Tokens live 7 days and re-mint on every portal visit; rotate SUITE_SECRET to revoke everything at once. Log out here to log out suite-wide.'
+                ? 'Active. Logging in here also signs you into SNMPCanvas, SyslogCanvas, and AlertCanvas (they share this deployment\'s SUITE_SECRET). Tokens live 24 hours and re-mint on every portal visit; rotate SUITE_SECRET to revoke everything at once. Log out here to log out suite-wide.'
                 : 'Off. Set the same SUITE_SECRET environment variable on LaunchCanvas, SNMPCanvas, SyslogCanvas, and AlertCanvas to make one login cover the suite.'}</div>
         </div>
         <div class="panel">
