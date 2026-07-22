@@ -246,10 +246,22 @@ async function handle(req, res, pathname, query) {
 
         let body = {};
         if (req.method === 'POST' || req.method === 'PATCH' || req.method === 'DELETE') {
-            try {
-                body = route.rawBody ? await readRaw(req, BOARD_MAX_BYTES) : await readJson(req);
-            } catch (err) {
-                return bad(res, err.message);
+            // CSRF belt over the SameSite=Lax cookie: a cross-site HTML form
+            // cannot set Content-Type: application/json, so requiring it on
+            // every mutating route blocks form-driven forgery. A body-less
+            // DELETE is allowed through (nothing to read).
+            const ct = String(req.headers['content-type'] || '');
+            const hasBody = req.headers['transfer-encoding'] !== undefined ||
+                (req.headers['content-length'] && req.headers['content-length'] !== '0');
+            if (hasBody && !ct.includes('application/json')) return json(res, 415, { error: 'expected application/json' });
+            if (hasBody) {
+                try {
+                    body = route.rawBody ? await readRaw(req, BOARD_MAX_BYTES) : await readJson(req);
+                } catch (err) {
+                    return bad(res, err.message);
+                }
+            } else if (req.method !== 'DELETE' && !ct.includes('application/json')) {
+                return json(res, 415, { error: 'expected application/json' });
             }
         }
         try {

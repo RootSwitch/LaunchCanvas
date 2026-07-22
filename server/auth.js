@@ -112,10 +112,15 @@ function validateSession(token) {
     const now = Math.floor(Date.now() / 1000);
     const row = db.prepare('SELECT token_hash, username, expires_ts FROM sessions WHERE token_hash = ?').get(sha256(token));
     if (!row || row.expires_ts <= now) return null;
+    // A null username means a session minted before the multi-user migration
+    // (the column was added nullable). Reject it rather than invent an 'admin'
+    // identity that may no longer exist - the upgrade asks for one fresh login.
+    // New sessions always carry their owner.
+    if (!row.username) { db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(row.token_hash); return null; }
     if (row.expires_ts - now < SESSION_REFRESH_S) {
         db.prepare('UPDATE sessions SET expires_ts = ? WHERE token_hash = ?').run(now + SESSION_TTL_S, row.token_hash);
     }
-    return row.username || 'admin';
+    return row.username;
 }
 
 function destroySession(token) {

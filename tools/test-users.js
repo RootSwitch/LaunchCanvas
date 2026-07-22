@@ -69,6 +69,22 @@ test('password reset evicts that user\'s sessions only', () => {
     assert.strictEqual(auth.checkLogin('alice', 'new-password-1'), 'alice');
 });
 
+test('a pre-migration null-username session is rejected, not treated as admin', () => {
+    const crypto = require('node:crypto');
+    const raw = 'x'.repeat(43);
+    const hash = crypto.createHash('sha256').update(raw).digest('hex');
+    const now = Math.floor(Date.now() / 1000);
+    // Simulate a 0.1.x session row: no username.
+    new Database(path.join(scratch, 'launchcanvas.db'))
+        .prepare('INSERT INTO sessions (token_hash, username, created_ts, expires_ts) VALUES (?, NULL, ?, ?)')
+        .run(hash, now, now + 3600);
+    assert.strictEqual(auth.validateSession(raw), null);
+    // and it is cleaned up on the way out
+    const still = new Database(path.join(scratch, 'launchcanvas.db'))
+        .prepare('SELECT 1 FROM sessions WHERE token_hash = ?').get(hash);
+    assert.strictEqual(still, undefined);
+});
+
 test('deleting a user evicts them; the last user is protected', () => {
     const alice = auth.listUsers().find((u) => u.username === 'alice');
     const t = auth.createSession('alice');
