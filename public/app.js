@@ -46,17 +46,26 @@
         }
     }
 
+    // Tile order is workflow/daily-use, not release date: the monitors you
+    // check every day first, the board pair together in draw->watch order,
+    // then configure-once alerting and the in-app docs.
     const APPS = [
-        { key: 'crosscanvas', name: 'CrossCanvas', icon: 'icons/crosscanvas.svg',
-          desc: 'Draw the network - diagram editor' },
-        { key: 'pingcanvas', name: 'PingCanvas', icon: 'icons/pingcanvas.svg',
-          desc: 'The wall - live reachability kiosk' },
         { key: 'snmpcanvas', name: 'SNMPCanvas', icon: 'icons/snmpcanvas.svg',
           desc: 'Poll, graph, and export device health' },
         { key: 'syslogcanvas', name: 'SyslogCanvas', icon: 'icons/syslogcanvas.svg',
           desc: 'Catch what your devices say - syslog and traps' },
+        { key: 'crosscanvas', name: 'CrossCanvas', icon: 'icons/crosscanvas.svg',
+          desc: 'Draw the network - diagram editor' },
+        { key: 'pingcanvas', name: 'PingCanvas', icon: 'icons/pingcanvas.svg',
+          desc: 'The wall - live reachability kiosk' },
         { key: 'alertcanvas', name: 'AlertCanvas', icon: 'icons/alertcanvas.svg',
-          desc: 'Thresholds to notifications - email, ntfy, syslog' }
+          desc: 'Thresholds to notifications - email, ntfy, syslog' },
+        // The suite docs ride the launcher as a full tile - a topbar link is
+        // easy to miss on a big screen, and "where do I start" deserves the
+        // same visual weight as the apps it explains. No URL override; it is
+        // this portal's own page (docs: true is skipped by Settings).
+        { key: 'docs', name: 'Suite Docs', icon: 'favicon.svg',
+          desc: 'Quickstart + how the six apps fit together', docs: true }
     ];
 
     // ===== theme picker (grouped, family standard - built in themes.js) =====
@@ -136,6 +145,22 @@
         try { s = await GET('/api/settings'); } catch (e) { return; }
 
         const tiles = APPS.map((a) => {
+            if (a.docs) {
+                // In-app page: same tab (back returns to the launcher), no
+                // override, no external URL line.
+                return `
+            <a class="tile" href="docs.html">
+                <img class="tile-shot" src="tiles/${esc(a.key)}.jpg" alt="">
+                <span class="tile-body">
+                    <img class="tile-icon" src="${esc(a.icon)}" alt="">
+                    <span class="tile-text">
+                        <span class="tile-name">${esc(a.name)}</span>
+                        <span class="tile-desc">${esc(a.desc)}</span>
+                        <span class="tile-url">this portal - no login needed</span>
+                    </span>
+                </span>
+            </a>`;
+            }
             const url = (s[`url_${a.key}`] || '').trim() || autoUrl(a.key);
             return `
             <a class="tile" href="${esc(url)}" target="_blank" rel="noopener">
@@ -219,7 +244,7 @@
         } catch (e) { return; }
         const users = usersResp.users || [];
 
-        const rows = APPS.map((a) => `
+        const rows = APPS.filter((a) => !a.docs).map((a) => `
             <label>${esc(a.name)} URL</label>
             <input type="text" data-url="url_${a.key}" value="${esc(s[`url_${a.key}`] || '')}"
                 placeholder="auto: ${esc(autoUrl(a.key))}">`).join('');

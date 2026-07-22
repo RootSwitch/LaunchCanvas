@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.1 - 2026-07-22
+
+- The suite docs join the launcher as a sixth full tile ("Suite Docs",
+  opening in-app) - the topbar link was easy to miss on a large screen,
+  and "where do I start" deserves the same visual weight as the apps it
+  explains.
+- Tiles reordered from release order to workflow order: the daily
+  monitors first (SNMPCanvas, SyslogCanvas), the board pair together in
+  draw-then-watch order (CrossCanvas, PingCanvas), then AlertCanvas and
+  the docs. A first-time user reading the grid now meets the apps
+  roughly in Quickstart order, and the kiosk is no longer the second
+  thing clicked on a box that has no board yet.
+
 ## 0.3.0 - 2026-07-22
 
 - In-app suite documentation, served by the portal with no login: a suite
