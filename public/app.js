@@ -1,0 +1,269 @@
+'use strict';
+// LaunchCanvas frontend: hash-routed views over the JSON API. Vanilla DOM, no
+// framework, no build step - the file you read is the file that runs.
+
+(function () {
+    const $main = document.getElementById('main');
+    const $nav = document.getElementById('nav');
+    const $logout = document.getElementById('logout-btn');
+
+    function esc(s) {
+        return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    async function api(method, path, body) {
+        const opts = { method, headers: {} };
+        if (body !== undefined) {
+            opts.headers['Content-Type'] = 'application/json';
+            opts.body = typeof body === 'string' ? body : JSON.stringify(body);
+        }
+        const res = await fetch(path, opts);
+        if (res.status === 401 && !path.startsWith('/api/session') && !path.startsWith('/api/login')) {
+            renderLogin(false);
+            throw new Error('authentication required');
+        }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `${res.status}`);
+        return data;
+    }
+    const GET = (p) => api('GET', p);
+
+    // ===== the fleet: what each tile is, and where it lives by default =====
+    // A blank Settings value means "derive from this page's own location":
+    // same hostname, each app's stock port, protocol matched to the portal's
+    // (the suite's TLS setup is all-or-nothing, so that guess holds).
+    function autoUrl(app) {
+        const h = location.hostname;
+        const https = location.protocol === 'https:';
+        const ping = https ? `https://${h}:8443` : `http://${h}:8080`;
+        const node = (port) => `${https ? 'https' : 'http'}://${h}:${port}/`;
+        switch (app) {
+            case 'crosscanvas': return `${ping}/index.html`;
+            case 'pingcanvas': return `${ping}/kiosk.html?board=data/board.xcanvas&status=data/status.json&snmp=data/snmp-status.json`;
+            case 'snmpcanvas': return node(9161);
+            case 'syslogcanvas': return node(9514);
+            case 'alertcanvas': return node(9162);
+        }
+    }
+
+    const APPS = [
+        { key: 'crosscanvas', name: 'CrossCanvas', icon: 'icons/crosscanvas.svg',
+          desc: 'Draw the network - diagram editor' },
+        { key: 'pingcanvas', name: 'PingCanvas', icon: 'icons/pingcanvas.svg',
+          desc: 'The wall - live reachability kiosk' },
+        { key: 'snmpcanvas', name: 'SNMPCanvas', icon: 'icons/snmpcanvas.svg',
+          desc: 'Poll, graph, and export device health' },
+        { key: 'syslogcanvas', name: 'SyslogCanvas', icon: 'icons/syslogcanvas.svg',
+          desc: 'Catch what your devices say - syslog and traps' },
+        { key: 'alertcanvas', name: 'AlertCanvas', icon: 'icons/alertcanvas.svg',
+          desc: 'Thresholds to notifications - email, ntfy, syslog' }
+    ];
+
+    // ===== theme picker (grouped, family standard) =====
+    const $theme = document.getElementById('theme-select');
+    let optgroup = null;
+    for (const [key, t] of Object.entries(Themes.THEMES)) {
+        const o = document.createElement('option');
+        o.value = key; o.textContent = t.label;
+        if (!t.group) {
+            $theme.appendChild(o);
+        } else {
+            if (!optgroup || optgroup.label !== t.group) {
+                optgroup = document.createElement('optgroup');
+                optgroup.label = t.group;
+                $theme.appendChild(optgroup);
+            }
+            optgroup.appendChild(o);
+        }
+    }
+    $theme.value = Themes.currentTheme();
+    $theme.addEventListener('change', () => Themes.applyTheme($theme.value));
+
+    $logout.addEventListener('click', async () => {
+        await api('POST', '/api/logout', {});
+        location.hash = '#/launch';
+        route();
+    });
+
+    function setNav(active, visible) {
+        $nav.style.display = visible ? '' : 'none';
+        $logout.style.display = visible ? '' : 'none';
+        for (const a of $nav.querySelectorAll('a')) a.classList.toggle('active', a.dataset.nav === active);
+    }
+
+    // ===== router =====
+    window.addEventListener('hashchange', route);
+
+    async function route() {
+        const session = await GET('/api/session');
+        if (!session.authenticated) { renderLogin(session.needsSetup); return; }
+        const hash = location.hash || '#/launch';
+        if (hash.startsWith('#/settings')) return renderSettings();
+        return renderLaunch();
+    }
+
+    // ===== login / first-run =====
+    function renderLogin(needsSetup) {
+        setNav(null, false);
+        $main.innerHTML = `
+        <div class="login-wrap"><div class="login-card">
+            <h1><svg width="20" height="20" viewBox="0 0 64 64" fill="none" stroke="var(--se-accent)">
+                <path d="M32 5 L32 12" stroke-width="5" stroke-linecap="round"/>
+                <path d="M18 45 L12 59 M46 45 L52 59 M32 45 L32 59" stroke-width="5" stroke-linecap="round"/>
+                <rect x="9" y="12" width="46" height="34" rx="3" fill="#f4f1ea" stroke-width="4"/>
+                <g stroke="var(--se-logo-b)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+                    <path d="M25 40 L25 19 L39 19 L39 40"/>
+                    <path d="M39 19 L33 22.5 L33 43.5 L39 40"/>
+                </g>
+            </svg> LaunchCanvas</h1>
+            <div class="sub">${needsSetup ? 'First run - choose an admin password (8+ characters).' : 'One login for the whole suite.'}</div>
+            <form id="login-form">
+                <input type="password" id="password" placeholder="Password" autocomplete="${needsSetup ? 'new-password' : 'current-password'}" autofocus>
+                <button type="submit">${needsSetup ? 'Set password' : 'Log in'}</button>
+                <div id="login-error" class="error-text"></div>
+            </form>
+        </div></div>`;
+        document.getElementById('login-form').addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            const password = document.getElementById('password').value;
+            try {
+                await api('POST', needsSetup ? '/api/setup' : '/api/login', { password });
+                location.hash = '#/launch';
+                route();
+            } catch (err) {
+                document.getElementById('login-error').textContent = err.message;
+            }
+        });
+    }
+
+    // ===== the launcher =====
+    async function renderLaunch() {
+        setNav('launch', true);
+        let s;
+        try { s = await GET('/api/settings'); } catch (e) { return; }
+
+        const tiles = APPS.map((a) => {
+            const url = (s[`url_${a.key}`] || '').trim() || autoUrl(a.key);
+            return `
+            <a class="tile" href="${esc(url)}" target="_blank" rel="noopener">
+                <img class="tile-icon" src="${esc(a.icon)}" alt="">
+                <span class="tile-name">${esc(a.name)}</span>
+                <span class="tile-desc">${esc(a.desc)}</span>
+                <span class="tile-url">${esc(url.replace(/^https?:\/\//, '').replace(/\/(index\.html|kiosk\.html).*$/, '').replace(/\/$/, ''))}</span>
+            </a>`;
+        }).join('');
+
+        const b = s.board || {};
+        const boardBlock = b.enabled ? `
+            <div class="panel" id="board-panel">
+                <h2>Wall board</h2>
+                <div class="section-note">Put a board where the wall reads it - upload an .xcanvas exported
+                    from CrossCanvas and the kiosk picks it up on its next refresh. The previous board is
+                    kept as a one-step backup.</div>
+                <div class="board-row">
+                    <span id="board-state" class="muted">${b.exists
+                        ? `board.xcanvas - ${(b.size / 1024).toFixed(1)} KB, updated ${esc((b.modifiedAt || '').replace('T', ' ').slice(0, 16))}Z`
+                        : 'No board uploaded yet.'}</span>
+                    <span class="spacer"></span>
+                    <input type="file" id="board-file" accept=".xcanvas,.netdraw,application/json" style="display:none">
+                    <button id="board-upload">Upload board</button>
+                    ${b.backupExists ? '<button id="board-restore" title="Restore the previous board">Restore backup</button>' : ''}
+                </div>
+                <div id="board-msg" class="muted small"></div>
+            </div>` : `
+            <div class="panel">
+                <h2>Wall board</h2>
+                <div class="section-note">Board uploads are disabled: no board directory is mounted
+                    (set BOARD_DIR / mount the shared data folder - see the README).</div>
+            </div>`;
+
+        $main.innerHTML = `
+        <div class="page-head"><h1>Launch</h1>
+            <span class="sub">${s.sso ? 'Single sign-on is active - tiles open already logged in.' : 'SSO is off (set SUITE_SECRET on the suite to log in everywhere at once).'}</span>
+        </div>
+        <div class="tile-grid">${tiles}</div>
+        ${boardBlock}`;
+
+        const fileInput = document.getElementById('board-file');
+        const msg = document.getElementById('board-msg');
+        document.getElementById('board-upload')?.addEventListener('click', () => fileInput.click());
+        fileInput?.addEventListener('change', () => {
+            const f = fileInput.files[0];
+            if (!f) return;
+            msg.textContent = `Uploading ${f.name}...`;
+            const reader = new FileReader();
+            reader.onload = async () => {
+                try {
+                    await api('POST', '/api/board', reader.result);
+                    msg.textContent = 'Board updated. The kiosk shows it on its next poll.';
+                    renderLaunch();
+                } catch (err) {
+                    msg.textContent = `Upload failed: ${err.message}`;
+                }
+            };
+            reader.readAsText(f);
+        });
+        document.getElementById('board-restore')?.addEventListener('click', async () => {
+            try {
+                await api('POST', '/api/board/restore', {});
+                renderLaunch();
+            } catch (err) { msg.textContent = `Restore failed: ${err.message}`; }
+        });
+    }
+
+    // ===== settings =====
+    async function renderSettings() {
+        setNav('settings', true);
+        let s;
+        try { s = await GET('/api/settings'); } catch (e) { return; }
+
+        const rows = APPS.map((a) => `
+            <label>${esc(a.name)} URL</label>
+            <input type="text" data-url="url_${a.key}" value="${esc(s[`url_${a.key}`] || '')}"
+                placeholder="auto: ${esc(autoUrl(a.key))}">`).join('');
+
+        $main.innerHTML = `
+        <div class="page-head"><h1>Settings</h1></div>
+        <div class="panel">
+            <h2>Tile destinations</h2>
+            <div class="section-note">Blank = automatic: this host, each app's stock port, the portal's
+                protocol. Set a URL only when an app lives somewhere else.</div>
+            <div class="form-grid">${rows}</div>
+            <div class="form-actions"><button class="btn-primary" id="save-urls">Save</button><span id="urls-msg" class="muted"></span></div>
+        </div>
+        <div class="panel">
+            <h2>Single sign-on</h2>
+            <div class="section-note">${s.sso
+                ? 'Active. Logging in here also signs you into SNMPCanvas, SyslogCanvas, and AlertCanvas (they share this deployment\'s SUITE_SECRET). Tokens live 7 days and re-mint on every portal visit; rotate SUITE_SECRET to revoke everything at once. Log out here to log out suite-wide.'
+                : 'Off. Set the same SUITE_SECRET environment variable on LaunchCanvas, SNMPCanvas, SyslogCanvas, and AlertCanvas to make one login cover the suite.'}</div>
+        </div>
+        <div class="panel">
+            <h2>Change password</h2>
+            <div class="form-grid">
+                <label>Current password</label><input type="password" id="pw-current" autocomplete="current-password">
+                <label>New password</label><input type="password" id="pw-next" autocomplete="new-password">
+            </div>
+            <div class="form-actions"><button class="btn-primary" id="save-pw">Change</button><span id="pw-msg" class="muted"></span></div>
+        </div>`;
+
+        document.getElementById('save-urls').addEventListener('click', async () => {
+            const body = {};
+            for (const inp of $main.querySelectorAll('[data-url]')) body[inp.dataset.url] = inp.value;
+            const m = document.getElementById('urls-msg');
+            try { await api('PATCH', '/api/settings', body); m.textContent = 'Saved.'; }
+            catch (err) { m.textContent = err.message; }
+        });
+        document.getElementById('save-pw').addEventListener('click', async () => {
+            const m = document.getElementById('pw-msg');
+            try {
+                await api('POST', '/api/settings/password', {
+                    current: document.getElementById('pw-current').value,
+                    next: document.getElementById('pw-next').value
+                });
+                m.textContent = 'Changed.';
+            } catch (err) { m.textContent = err.message; }
+        });
+    }
+
+    route();
+})();

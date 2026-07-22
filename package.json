@@ -1,0 +1,26 @@
+{
+  "name": "launchcanvas",
+  "version": "0.1.0",
+  "description": "The Canvas suite's front door: one login, a launcher for every sibling app, and board uploads for the wall.",
+  "license": "Unlicense",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RootSwitch/LaunchCanvas.git"
+  },
+  "homepage": "https://github.com/RootSwitch/LaunchCanvas",
+  "bugs": {
+    "url": "https://github.com/RootSwitch/LaunchCanvas/issues"
+  },
+  "type": "commonjs",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "test": "node tools/test-token.js && node tools/charcheck.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1"
+  }
+}

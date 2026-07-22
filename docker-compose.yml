@@ -1,0 +1,52 @@
+# Cap container logs so an unattended box can't slowly fill its disk - Docker's
+# default json-file driver never rotates. 10 MB x 5 = 50 MB. (Mirrors the rest
+# of the Canvas suite.)
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  launchcanvas:
+    build: .
+    image: launchcanvas
+    container_name: launchcanvas
+    # Default port 9160 - the door to the 916x row, one below SNMPCanvas.
+    # Clear of UptimeKuma (3001), CrossCanvas/PingCanvas (8080/8443),
+    # SNMPCanvas (9161), AlertCanvas (9162), and SyslogCanvas (9514).
+    ports:
+      - "9160:9160"
+    volumes:
+      # Everything persistent lives here ON THE HOST: the SQLite database and
+      # TLS certs (data/certs/). Create it writable by the container user:
+      #   mkdir -p data && sudo chown 1000:1000 data
+      # The :z suffix labels the mount for SELinux hosts; no-op elsewhere.
+      - ./data:/data:z
+      # Board uploads: mount the directory the PingCanvas kiosk reads its
+      # board from. The sibling-checkout default below matches the layouts in
+      # the deploy guides; put your real path in docker-compose.override.yml
+      # (gitignored, auto-loaded, merged by mount path) so updates pull
+      # cleanly:
+      #   services:
+      #     launchcanvas:
+      #       volumes:
+      #         - /srv/noc-data:/boards:z
+      - ../pingcanvas/data:/boards:z
+    environment:
+      # Timezone governs log timestamps
+      - TZ=Etc/UTC
+      # Optional: pre-set the admin password (otherwise the UI offers a
+      # first-run setup page)
+      #- ADMIN_PASSWORD=change-me
+      # Single sign-on: set the SAME long random value here and on
+      # SNMPCanvas, SyslogCanvas, and AlertCanvas, and logging in at the
+      # portal signs you into all of them (generate: openssl rand -base64 32).
+      # Unset = the portal is just a launcher; every app keeps its own login.
+      #- SUITE_SECRET=a-long-random-string
+    logging: *default-logging
+    restart: unless-stopped
+
+# HTTPS: run  ./tools/gen-cert.sh <hostname-or-ip>  once on the host (or drop
+# your own PEM pair at data/certs/server.crt + server.key), then
+# `docker compose restart`. The server switches to HTTPS automatically.

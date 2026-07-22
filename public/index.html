@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LaunchCanvas</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="topbar">
+    <span class="brand">
+        <span class="logo">
+            <!-- The family easel mark (shared across all six siblings), with
+                 an open-door gap in the canvas: the suite's front door. Easel
+                 takes the theme accent via currentColor. -->
+            <svg width="22" height="22" viewBox="0 0 64 64" fill="none" stroke="currentColor">
+                <path d="M32 5 L32 12" stroke-width="5" stroke-linecap="round"/>
+                <path d="M18 45 L12 59 M46 45 L52 59 M32 45 L32 59" stroke-width="5" stroke-linecap="round"/>
+                <rect x="9" y="12" width="46" height="34" rx="3" fill="#f4f1ea" stroke-width="4"/>
+                <g stroke="var(--se-logo-b, #3f72af)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+                    <path d="M25 40 L25 19 L39 19 L39 40"/>
+                    <path d="M39 19 L33 22.5 L33 43.5 L39 40"/>
+                    <circle cx="36" cy="31" r="0.5"/>
+                </g>
+            </svg>
+        </span>
+        <span class="brand-name">LaunchCanvas</span>
+    </span>
+    <nav id="nav" style="display:none">
+        <a href="#/launch" data-nav="launch">Launch</a>
+        <a href="#/settings" data-nav="settings">Settings</a>
+    </nav>
+    <span class="topbar-spacer"></span>
+    <select id="theme-select" title="Theme"></select>
+    <button id="logout-btn" style="display:none" title="Logs out of the portal AND clears the suite-wide sign-on token">Log out</button>
+</div>
+<div id="main"></div>
+<script src="themes.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
