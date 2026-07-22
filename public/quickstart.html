@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quickstart - LaunchCanvas</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="topbar">
+    <a class="brand" href="./" style="color:inherit;text-decoration:none">
+        <span class="logo">
+            <svg width="22" height="22" viewBox="0 0 64 64" fill="none" stroke="currentColor">
+                <path d="M32 5 L32 12" stroke-width="5" stroke-linecap="round"/>
+                <path d="M18 45 L12 59 M46 45 L52 59 M32 45 L32 59" stroke-width="5" stroke-linecap="round"/>
+                <rect x="9" y="12" width="46" height="34" rx="3" fill="#f4f1ea" stroke-width="4"/>
+                <g stroke="var(--se-logo-b, #3f72af)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+                    <path d="M25 40 L25 19 L39 19 L39 40"/>
+                    <path d="M39 19 L33 22.5 L33 43.5 L39 40"/>
+                </g>
+            </svg>
+        </span>
+        <span class="brand-name">LaunchCanvas</span>
+    </a>
+    <nav>
+        <a class="doc-link" href="docs.html">Overview</a>
+        <a class="doc-link active" href="quickstart.html">Quickstart</a>
+        <a class="doc-link" href="apps.html">The apps</a>
+    </nav>
+    <span class="topbar-spacer"></span>
+    <a class="doc-link" href="./" title="Back to the launcher">Portal</a>
+    <select id="theme-select" title="Theme"></select>
+</div>
+<div id="main"><div class="docs">
+
+<div class="panel">
+    <h1>Quickstart: from a device list to a live wall</h1>
+    <div class="lead">About ten minutes, start to finish, once the apps are running.</div>
+    <p>Before you start: this guide assumes the suite is installed and running on
+    this host - either via the one-shot setup script or each app's own
+    <code>docker compose up</code> (see <a href="apps.html">the apps</a> for
+    ports and links). Pick the path that matches where you're starting from;
+    both end at the same wall.</p>
+</div>
+
+<div class="panel">
+    <h2>Path A - you have devices, but no diagram</h2>
+    <p>Let SNMP do the drawing prep for you: monitor first, and a starter
+    diagram falls out of it.</p>
+    <ol class="steps">
+        <li><span class="step-app">SNMPCanvas</span> - open <b>Devices</b> and
+            <b>Add</b> (or <b>Bulk add</b> for a subnet's worth at once). Enter each
+            device's address and SNMP credentials - the probe shows what the device
+            offers before anything is saved.</li>
+        <li>On each device, check <b>Export</b> for the interfaces and sensors you
+            want visible on the wall. Every exported value gets a short
+            <code>{code}</code> token - you'll paste those into the diagram in step 5.
+            (Devices themselves report up/down automatically.)</li>
+        <li>In <b>Settings &rarr; Inventory export</b>, click
+            <b>Export inventory (CrossCanvas CSV)</b>. The download lists every
+            monitored device with its address, serial, and a best-guess stencil -
+            routers arrive as routers, switches as switches.</li>
+        <li><span class="step-app">CrossCanvas</span> - <b>File &rarr; Import
+            Inventory</b>, pick the CSV. Your fleet lands on the canvas labeled and
+            icon'd. Lay it out, draw the connections, add zones - make it yours.</li>
+        <li>Where you want a live reading on the wall, put its <code>{code}</code>
+            token in a label or annotation - <code>Rx {Xa3}</code> next to an uplink,
+            for example. Plain text stays plain; tokens become numbers.</li>
+        <li>Save the diagram as an <code>.xcanvas</code> file (any name is fine).</li>
+        <li><span class="step-app">LaunchCanvas</span> - back on the
+            <a href="./">Launch page</a>, use <b>Wall board &rarr; Upload board</b>.
+            The file lands (as <code>board.xcanvas</code>) exactly where the kiosk
+            reads it, and the previous board is kept as a one-click backup.</li>
+        <li><span class="step-app">PingCanvas</span> - open the kiosk tile. Devices
+            colored by reachability, your <code>{code}</code> tokens showing live
+            readings, refreshing on its own. Put it on the wall TV and enjoy.</li>
+    </ol>
+</div>
+
+<div class="panel">
+    <h2>Path B - you already have a diagram</h2>
+    <ol class="steps">
+        <li><span class="step-app">CrossCanvas</span> - <b>File &rarr; Import
+            Diagram</b> brings in Visio (<code>.vsdx</code>), draw.io, or Gliffy
+            files; stencils are matched to the suite's own icon set.</li>
+        <li>Give each device you want monitored an <b>IP-Address</b> in its Device
+            Details - that single field is what makes it a monitored device on the
+            wall. Devices without one stay decorative, which is sometimes exactly
+            right.</li>
+        <li>Want live readings too, not just up/down? Add the same devices in
+            <span class="step-app">SNMPCanvas</span>, check <b>Export</b> on the
+            values you care about, and put their <code>{code}</code> tokens into
+            labels or annotations on the diagram.</li>
+        <li>Continue from step 6 above: save, upload, open the kiosk.</li>
+    </ol>
+</div>
+
+<div class="panel">
+    <h2>Where you end up</h2>
+    <img class="shot" src="tiles/pingcanvas.jpg" alt="A PingCanvas wall: the diagram with live status colors and readings">
+    <p>From here, the rest of the suite is one step each:</p>
+    <ul>
+        <li><b>AlertCanvas</b> - set thresholds on the exported values (CPU over
+            90, temperature over 45, device down) and get email, ntfy, or syslog
+            notifications. It watches the same feed the wall does.</li>
+        <li><b>SyslogCanvas</b> - point your devices' syslog and SNMP traps at
+            this host (514/udp and 162/udp) and you have a searchable record of
+            what everything said, for the day the wall shows red.</li>
+        <li><b>Single sign-on</b> - set one shared <code>SUITE_SECRET</code> across
+            the suite and logging in here logs you into every app at once (the
+            LaunchCanvas README has the two-line recipe).</li>
+    </ul>
+</div>
+
+</div></div>
+<script src="themes.js"></script>
+<script src="docs.js"></script>
+</body>
+</html>

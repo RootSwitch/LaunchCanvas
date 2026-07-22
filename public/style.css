@@ -416,3 +416,114 @@ table.thresholds .dir {
 }
 .board-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .board-row .spacer { flex: 1; }
+
+/* ===== Docs pages (docs.html / quickstart.html / apps.html) =====
+   Static content in the app's chrome: same topbar, same panels, readable
+   line lengths. Reachable without login - the person who was just told
+   "go to this address" is exactly who needs them. */
+.doc-link {
+    padding: 5px 11px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--se-txt);
+}
+.doc-link:hover { background: var(--se-panel-2); text-decoration: none; }
+.doc-link.active { background: var(--se-panel-2); color: var(--se-accent); }
+
+.docs { max-width: 860px; margin: 0 auto; }
+.docs .panel { padding: 18px 22px; }
+.docs h1 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+.docs .lead { color: var(--se-txt-dim); font-size: 14px; margin-bottom: 16px; }
+.docs h2 { font-size: 16px; font-weight: 600; margin: 4px 0 10px; }
+.docs h3 { font-size: 14px; font-weight: 600; margin: 14px 0 6px; }
+.docs p, .docs li { line-height: 1.55; margin-bottom: 8px; }
+.docs ul, .docs ol { margin: 0 0 10px 22px; }
+.docs li { margin-bottom: 6px; }
+.docs code {
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 12px;
+    background: var(--se-input);
+    border: 1px solid var(--se-border);
+    border-radius: 4px;
+    padding: 0 5px;
+}
+.docs pre {
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    background: var(--se-input);
+    border: 1px solid var(--se-border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    overflow-x: auto;
+}
+.docs img.shot {
+    max-width: 100%;
+    border: 1px solid var(--se-border);
+    border-radius: 6px;
+    display: block;
+    margin: 4px 0 10px;
+}
+
+/* Big numbered steps for the quickstart paths */
+.docs ol.steps { list-style: none; margin-left: 0; counter-reset: step; }
+.docs ol.steps > li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 40px;
+    margin-bottom: 14px;
+}
+.docs ol.steps > li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--se-accent);
+    color: #fff;
+    font-weight: 600;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.docs .step-app { font-weight: 600; }
+
+/* App one-pager cards (apps.html) and the overview grid (docs.html) */
+.docs .app-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.docs .app-head img { width: 34px; height: 34px; }
+.docs .app-head h2 { margin: 0; }
+.docs .app-head .port {
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 11px;
+    color: var(--se-txt-dim);
+    border: 1px solid var(--se-border);
+    border-radius: 9px;
+    padding: 1px 8px;
+    white-space: nowrap;
+}
+.docs .app-head .spacer { flex: 1; }
+.docs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 12px;
+    margin-bottom: 4px;
+}
+.docs-grid a.card {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    background: var(--se-panel-2);
+    border: 1px solid var(--se-border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    color: var(--se-txt);
+    text-decoration: none;
+}
+.docs-grid a.card:hover { border-color: var(--se-accent); text-decoration: none; }
+.docs-grid a.card img { width: 30px; height: 30px; flex: none; margin-top: 2px; }
+.docs-grid a.card b { display: block; margin-bottom: 2px; }
+.docs-grid a.card span { font-size: 12px; color: var(--se-txt-dim); line-height: 1.4; }

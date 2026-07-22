@@ -252,6 +252,30 @@
         try { return localStorage.getItem(KEY) || 'classic'; } catch (_) { return 'classic'; }
     }
 
-    window.Themes = { THEMES, applyTheme, currentTheme };
+    // Build the grouped picker options, restore the saved choice, apply on
+    // change. Shared by the app and the static docs pages so the option-group
+    // loop exists exactly once.
+    function wirePicker(select) {
+        if (!select) return;
+        let optgroup = null;
+        for (const [key, t] of Object.entries(THEMES)) {
+            const o = document.createElement('option');
+            o.value = key; o.textContent = t.label;
+            if (!t.group) {
+                select.appendChild(o);
+            } else {
+                if (!optgroup || optgroup.label !== t.group) {
+                    optgroup = document.createElement('optgroup');
+                    optgroup.label = t.group;
+                    select.appendChild(optgroup);
+                }
+                optgroup.appendChild(o);
+            }
+        }
+        select.value = currentTheme();
+        select.addEventListener('change', () => applyTheme(select.value));
+    }
+
+    window.Themes = { THEMES, applyTheme, currentTheme, wirePicker };
     applyTheme(currentTheme());
 })();

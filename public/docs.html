@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Docs - LaunchCanvas</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="topbar">
+    <a class="brand" href="./" style="color:inherit;text-decoration:none">
+        <span class="logo">
+            <svg width="22" height="22" viewBox="0 0 64 64" fill="none" stroke="currentColor">
+                <path d="M32 5 L32 12" stroke-width="5" stroke-linecap="round"/>
+                <path d="M18 45 L12 59 M46 45 L52 59 M32 45 L32 59" stroke-width="5" stroke-linecap="round"/>
+                <rect x="9" y="12" width="46" height="34" rx="3" fill="#f4f1ea" stroke-width="4"/>
+                <g stroke="var(--se-logo-b, #3f72af)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+                    <path d="M25 40 L25 19 L39 19 L39 40"/>
+                    <path d="M39 19 L33 22.5 L33 43.5 L39 40"/>
+                </g>
+            </svg>
+        </span>
+        <span class="brand-name">LaunchCanvas</span>
+    </a>
+    <nav>
+        <a class="doc-link active" href="docs.html">Overview</a>
+        <a class="doc-link" href="quickstart.html">Quickstart</a>
+        <a class="doc-link" href="apps.html">The apps</a>
+    </nav>
+    <span class="topbar-spacer"></span>
+    <a class="doc-link" href="./" title="Back to the launcher">Portal</a>
+    <select id="theme-select" title="Theme"></select>
+</div>
+<div id="main"><div class="docs">
+
+<div class="panel">
+    <h1>The Canvas suite</h1>
+    <div class="lead">Six small self-hosted apps that turn a network diagram into a live monitoring wall.</div>
+    <p>Each app does one job and hands its output to the next: draw the network,
+    watch it answer, graph what it reports, keep what it says, get told when
+    something crosses a line. Everything runs on your own hardware, stores its
+    data in plain files and SQLite, and works without any of the others - the
+    suite is how they behave together.</p>
+    <pre>
+CrossCanvas ──draw──► your diagram (.xcanvas) ──upload here──► PingCanvas (the wall)
+     ▲                                                             ▲
+     │ inventory CSV                                 live readings │
+     │                                                             │
+SNMPCanvas ──polls your devices──► snmp-status.json ───────────────┤
+                                                                   └──► AlertCanvas ──► email / ntfy / syslog
+SyslogCanvas ◄──syslog + SNMP traps─── your devices
+LaunchCanvas ── one login, the tiles, board upload (you are here)</pre>
+    <p>From a fresh VM and a device list to a live wall is about ten minutes -
+    the <a href="quickstart.html">Quickstart</a> walks the whole path.</p>
+</div>
+
+<div class="panel">
+    <h2>The apps</h2>
+    <div class="docs-grid">
+        <a class="card" href="apps.html#crosscanvas"><img src="icons/crosscanvas.svg" alt="">
+            <span><b>CrossCanvas</b><span>Draw the network - or import Visio, draw.io, Gliffy, or a CSV</span></span></a>
+        <a class="card" href="apps.html#pingcanvas"><img src="icons/pingcanvas.svg" alt="">
+            <span><b>PingCanvas</b><span>Your diagram as a live wall - reachability colors, kiosk mode</span></span></a>
+        <a class="card" href="apps.html#snmpcanvas"><img src="icons/snmpcanvas.svg" alt="">
+            <span><b>SNMPCanvas</b><span>Poll device health over SNMP - graphs, history, exports</span></span></a>
+        <a class="card" href="apps.html#syslogcanvas"><img src="icons/syslogcanvas.svg" alt="">
+            <span><b>SyslogCanvas</b><span>The flight recorder - syslog and SNMP traps, searchable</span></span></a>
+        <a class="card" href="apps.html#alertcanvas"><img src="icons/alertcanvas.svg" alt="">
+            <span><b>AlertCanvas</b><span>Thresholds on the readings - email, ntfy, syslog alerts</span></span></a>
+        <a class="card" href="apps.html#launchcanvas"><img src="favicon.svg" alt="">
+            <span><b>LaunchCanvas</b><span>The front door - one login, tile launcher, board upload</span></span></a>
+    </div>
+</div>
+
+<div class="panel">
+    <h2>Where things live</h2>
+    <ul>
+        <li>Every app is its own repository with its own README - the cards above
+            link to a short in-suite guide per app, and each guide links to the
+            full documentation on GitHub.</li>
+        <li>The wall reads one file: <code>board.xcanvas</code>. Upload a new one
+            from the Launch page any time - the previous board is kept as a
+            one-click backup.</li>
+        <li>Live readings travel as one file too: <code>snmp-status.json</code>,
+            written by SNMPCanvas, read by the wall and by AlertCanvas.</li>
+        <li>All six are public domain (The Unlicense). Use them, fork them, ship
+            them at work.</li>
+    </ul>
+</div>
+
+</div></div>
+<script src="themes.js"></script>
+<script src="docs.js"></script>
+</body>
+</html>

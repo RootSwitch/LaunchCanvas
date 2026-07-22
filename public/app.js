@@ -59,25 +59,8 @@
           desc: 'Thresholds to notifications - email, ntfy, syslog' }
     ];
 
-    // ===== theme picker (grouped, family standard) =====
-    const $theme = document.getElementById('theme-select');
-    let optgroup = null;
-    for (const [key, t] of Object.entries(Themes.THEMES)) {
-        const o = document.createElement('option');
-        o.value = key; o.textContent = t.label;
-        if (!t.group) {
-            $theme.appendChild(o);
-        } else {
-            if (!optgroup || optgroup.label !== t.group) {
-                optgroup = document.createElement('optgroup');
-                optgroup.label = t.group;
-                $theme.appendChild(optgroup);
-            }
-            optgroup.appendChild(o);
-        }
-    }
-    $theme.value = Themes.currentTheme();
-    $theme.addEventListener('change', () => Themes.applyTheme($theme.value));
+    // ===== theme picker (grouped, family standard - built in themes.js) =====
+    Themes.wirePicker(document.getElementById('theme-select'));
 
     $logout.addEventListener('click', async () => {
         await api('POST', '/api/logout', {});
@@ -126,6 +109,7 @@
                 <button type="submit">${needsSetup ? 'Create account' : 'Log in'}</button>
                 <div id="login-error" class="error-text"></div>
             </form>
+            <div class="small" style="margin-top:12px"><a href="docs.html" title="What the suite is and how the six apps fit together">New to the suite? Start here</a></div>
         </div></div>`;
         document.getElementById('login-form').addEventListener('submit', async (ev) => {
             ev.preventDefault();

@@ -58,6 +58,11 @@ plain launcher with per-app logins.
   deleted. Sessions, login rate limiting, and automatic HTTPS are the
   family standard. Lost every password? Delete data/launchcanvas.db - the
   portal keeps no history, only tile URL overrides.
+- **In-app suite docs** - a suite overview, a ten-minute quickstart (device
+  list to live wall, both the diagram-first and inventory-first paths), and a
+  one-pager per app, served by the portal with no login required. The address
+  you give someone is now also the place they learn the suite - no tour of
+  six GitHub READMEs needed to get started.
 - **29 themes** carried over from CrossCanvas's palette family, grouped the
   same way (Paper / Warm / Cool / Night / Screen).
 
@@ -211,6 +216,7 @@ server/auth.js     scrypt password, sessions, rate limiting (family standard)
 server/token.js    the SSO token: mint + verify (HMAC-SHA256, SUITE_SECRET)
 server/db.js       SQLite: settings + sessions, nothing else
 public/            login + launcher + settings, themes.js, app icons
+public/docs.html   in-app suite docs (+ quickstart.html, apps.html) - no login
 tools/             gen-cert.sh, charcheck.js, test-token.js
 ```
 

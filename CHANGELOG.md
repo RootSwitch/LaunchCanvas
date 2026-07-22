@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.0 - 2026-07-22
+
+- In-app suite documentation, served by the portal with no login: a suite
+  overview with the pipeline map (docs.html), a ten-minute quickstart
+  covering both starting points - a device list (SNMPCanvas inventory ->
+  CrossCanvas import) and an existing diagram (Visio/draw.io/Gliffy
+  import) - and a one-pager per app with its port, first five minutes,
+  and a link to the full README (apps.html). The portal's address is now
+  the suite's starting point, not just its door.
+- "Docs" in the top bar (visible logged out too) and a "New to the
+  suite? Start here" link on the login card.
+- The grouped theme-picker builder moved into themes.js (wirePicker) so
+  the app and the docs pages share one copy.
+
 ## 0.2.1 - 2026-07-22
 
 - Review pass before publication. Suite token TTL shortened to 24h (from 7

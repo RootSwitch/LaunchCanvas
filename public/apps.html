@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The apps - LaunchCanvas</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="topbar">
+    <a class="brand" href="./" style="color:inherit;text-decoration:none">
+        <span class="logo">
+            <svg width="22" height="22" viewBox="0 0 64 64" fill="none" stroke="currentColor">
+                <path d="M32 5 L32 12" stroke-width="5" stroke-linecap="round"/>
+                <path d="M18 45 L12 59 M46 45 L52 59 M32 45 L32 59" stroke-width="5" stroke-linecap="round"/>
+                <rect x="9" y="12" width="46" height="34" rx="3" fill="#f4f1ea" stroke-width="4"/>
+                <g stroke="var(--se-logo-b, #3f72af)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+                    <path d="M25 40 L25 19 L39 19 L39 40"/>
+                    <path d="M39 19 L33 22.5 L33 43.5 L39 40"/>
+                </g>
+            </svg>
+        </span>
+        <span class="brand-name">LaunchCanvas</span>
+    </a>
+    <nav>
+        <a class="doc-link" href="docs.html">Overview</a>
+        <a class="doc-link" href="quickstart.html">Quickstart</a>
+        <a class="doc-link active" href="apps.html">The apps</a>
+    </nav>
+    <span class="topbar-spacer"></span>
+    <a class="doc-link" href="./" title="Back to the launcher">Portal</a>
+    <select id="theme-select" title="Theme"></select>
+</div>
+<div id="main"><div class="docs">
+
+<div class="panel">
+    <h1>The apps, one page each</h1>
+    <div class="lead">What each one is, your first five minutes in it, and where the full documentation lives.</div>
+    <p>Every app stands alone - its repository, README, and docker compose are
+    self-contained. These are the short versions, from the suite's point of
+    view. The ports are the stock ones; your tiles on the
+    <a href="./">Launch page</a> reflect any overrides.</p>
+</div>
+
+<div class="panel" id="crosscanvas">
+    <div class="app-head">
+        <img src="icons/crosscanvas.svg" alt="">
+        <h2>CrossCanvas</h2>
+        <span class="port">:8080 (:8443 TLS)</span>
+        <span class="spacer"></span>
+        <a href="https://github.com/RootSwitch/CrossCanvas" target="_blank" rel="noopener">Full README &rarr;</a>
+    </div>
+    <p>The diagram editor - where the network gets drawn. A large stencil
+    library, zones, themes, and importers for Visio (<code>.vsdx</code>),
+    draw.io, Gliffy, and inventory CSVs. Saves to a plain-JSON
+    <code>.xcanvas</code> file that the rest of the suite treats as the source
+    of truth.</p>
+    <h3>First five minutes</h3>
+    <ul>
+        <li>Drag stencils from the sidebar, connect them, group with zones.</li>
+        <li>Have an existing diagram? <b>File &rarr; Import Diagram</b>. Have a
+            device list? <b>File &rarr; Import Inventory</b>.</li>
+        <li>Give monitored devices an <b>IP-Address</b> in Device Details - that
+            is the wall's whole contract.</li>
+        <li>Pick a theme (29 of them); exports and the wall inherit it.</li>
+    </ul>
+</div>
+
+<div class="panel" id="pingcanvas">
+    <div class="app-head">
+        <img src="icons/pingcanvas.svg" alt="">
+        <h2>PingCanvas</h2>
+        <span class="port">:8080/kiosk.html</span>
+        <span class="spacer"></span>
+        <a href="https://github.com/RootSwitch/PingCanvas" target="_blank" rel="noopener">Full README &rarr;</a>
+    </div>
+    <p>Your diagram as a live wall. A poller pings every device with an
+    IP-Address and the kiosk page recolors the diagram by reachability - green,
+    amber, red - and overlays live SNMP readings where the diagram carries
+    <code>{code}</code> tokens. Built for a TV that never gets a keyboard: no
+    login, URL-tunable, burn-in-safe theme rotation.</p>
+    <h3>First five minutes</h3>
+    <ul>
+        <li>Upload a board from the <a href="./">Launch page</a>; the kiosk picks
+            it up on its next refresh.</li>
+        <li>Open the kiosk tile - that's it, it runs itself.</li>
+        <li>Want different colors, refresh rates, or theme rotation? It's all URL
+            parameters - the README has the table.</li>
+    </ul>
+</div>
+
+<div class="panel" id="snmpcanvas">
+    <div class="app-head">
+        <img src="icons/snmpcanvas.svg" alt="">
+        <h2>SNMPCanvas</h2>
+        <span class="port">:9161</span>
+        <span class="spacer"></span>
+        <a href="https://github.com/RootSwitch/SNMPCanvas" target="_blank" rel="noopener">Full README &rarr;</a>
+    </div>
+    <p>The numbers. Polls your devices over SNMP (v2c or v3) for interface
+    traffic, CPU, memory, temperature, fans, power, UPS state - with vendor
+    smarts for the gear it recognizes. Keeps history, draws graphs, and exports
+    the live readings (<code>snmp-status.json</code>) that the wall and
+    AlertCanvas consume.</p>
+    <h3>First five minutes</h3>
+    <ul>
+        <li><b>Devices &rarr; Add</b> (or <b>Bulk add</b>): address + credentials;
+            the probe shows what the device offers before you commit.</li>
+        <li>Check <b>Export</b> on values you want on the wall - each gets a
+            <code>{code}</code> token, click to copy.</li>
+        <li><b>Settings &rarr; Inventory export</b> turns the monitored fleet into
+            a CrossCanvas-importable CSV - the fastest route to a first diagram.</li>
+    </ul>
+</div>
+
+<div class="panel" id="syslogcanvas">
+    <div class="app-head">
+        <img src="icons/syslogcanvas.svg" alt="">
+        <h2>SyslogCanvas</h2>
+        <span class="port">:9514 (syslog 514/udp, traps 162/udp)</span>
+        <span class="spacer"></span>
+        <a href="https://github.com/RootSwitch/SyslogCanvas" target="_blank" rel="noopener">Full README &rarr;</a>
+    </div>
+    <p>The flight recorder. Listens for syslog messages and SNMP traps from
+    your devices, stores them with sensible retention caps, and gives you a
+    fast filterable view - severity, host, text - for the day something turns
+    red and you need to know what it said beforehand.</p>
+    <h3>First five minutes</h3>
+    <ul>
+        <li>Point a device's syslog at this host (514/udp) - most network gear is
+            one config line.</li>
+        <li>Send traps to 162/udp; they land in the same stream, decoded.</li>
+        <li>Watch the live tail, then try a filter - it's all server-side, so it
+            stays fast at hundreds of thousands of rows.</li>
+    </ul>
+</div>
+
+<div class="panel" id="alertcanvas">
+    <div class="app-head">
+        <img src="icons/alertcanvas.svg" alt="">
+        <h2>AlertCanvas</h2>
+        <span class="port">:9162</span>
+        <span class="spacer"></span>
+        <a href="https://github.com/RootSwitch/AlertCanvas" target="_blank" rel="noopener">Full README &rarr;</a>
+    </div>
+    <p>Thresholds to notifications. Watches the same
+    <code>snmp-status.json</code> feed as the wall and raises alarms when a
+    value crosses a line you set - device down, CPU pegged, temperature
+    climbing, UPS on battery. Delivers by email (SMTP), ntfy push, or syslog,
+    with warn/crit levels and per-device overrides.</p>
+    <h3>First five minutes</h3>
+    <ul>
+        <li>Set global thresholds in <b>Settings</b>; override per device where a
+            hot closet is just a hot closet.</li>
+        <li>Add a channel (email, ntfy, or syslog) and use the built-in test to
+            prove delivery end to end - including the 2 AM-style alarm mail.</li>
+        <li>Device down alerts work out of the box for every exported device.</li>
+    </ul>
+</div>
+
+<div class="panel" id="launchcanvas">
+    <div class="app-head">
+        <img src="favicon.svg" alt="">
+        <h2>LaunchCanvas</h2>
+        <span class="port">:9160</span>
+        <span class="spacer"></span>
+        <a href="https://github.com/RootSwitch/LaunchCanvas" target="_blank" rel="noopener">Full README &rarr;</a>
+    </div>
+    <p>The front door - the app you're reading this in. One login for the
+    suite (with optional single sign-on into the Node siblings via a shared
+    <code>SUITE_SECRET</code>), a tile per app, per-user accounts for the whole
+    team, and board upload so a new diagram reaches the wall without touching a
+    terminal.</p>
+    <h3>First five minutes</h3>
+    <ul>
+        <li>Create accounts in <b>Settings</b> - one per human, all equal.</li>
+        <li>Override a tile URL if an app lives on another host.</li>
+        <li>Enable SSO with one shared secret - the README has the recipe.</li>
+    </ul>
+</div>
+
+</div></div>
+<script src="themes.js"></script>
+<script src="docs.js"></script>
+</body>
+</html>
