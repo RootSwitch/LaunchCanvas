@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.1 - 2026-07-22
+
+- Review pass before publication. Suite token TTL shortened to 24h (from 7
+  days) so an off-boarded user's residual SSO access is bounded; active
+  users never notice (loading the portal re-mints it). The user-removal
+  dialog now spells out that a token already in their browser survives until
+  expiry unless SUITE_SECRET is rotated.
+- Security posture documented honestly: every account is a full suite admin
+  (no roles), the SSO cookie is host-wide (visible to every service on the
+  portal's hostname), and stateless-token revocation is coarse. Added an
+  environment-variable reference (PORT, TRUST_PROXY, COOKIE_SECURE, ...).
+- clientIp now takes the last (proxy-vouched) X-Forwarded-For hop, not the
+  first (client-spoofable) one - matches the fix across the siblings.
+- Copy-paste cleanup: gen-cert.sh and themes.js no longer say "AlertCanvas";
+  removed a stray snmp-status.json .gitignore entry; corrected the tile
+  count and the SSO diagram (CrossCanvas/PingCanvas have no login).
+
 ## 0.2.0 - 2026-07-21
 
 - Multi-user accounts: usernames + passwords live at the portal, one

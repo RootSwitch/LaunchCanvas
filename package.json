@@ -1,6 +1,6 @@
 {
   "name": "launchcanvas",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "The Canvas suite's front door: one login, a launcher for every sibling app, and board uploads for the wall.",
   "license": "Unlicense",
   "repository": {

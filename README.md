@@ -14,17 +14,16 @@ performance history,
 what your devices said, and
 [**AlertCanvas**](https://github.com/RootSwitch/AlertCanvas) turns readings
 into notifications. LaunchCanvas is the door you walk in through: log in
-once, see six rooms.
-
-<!-- hero image placeholder: docs/hero-quadrants.png -->
+once, launch any of them.
 
 ## How it works
 
 ```
 you ──login──► LaunchCanvas ──sets one host-wide signed token──┐
                     │                                          ▼
-                    └──tiles──► CrossCanvas / PingCanvas / SNMPCanvas /
-                                SyslogCanvas / AlertCanvas (already logged in)
+                    └──tiles──► SNMPCanvas / SyslogCanvas / AlertCanvas
+                                              (already logged in via the token)
+                            └──► CrossCanvas / PingCanvas (no login of their own)
 ```
 
 One Node process: a login page, a tile launcher, and a couple of small
@@ -149,15 +148,47 @@ It writes a self-signed cert to `data/certs/server.crt` + `server.key`; the
 server detects the pair at startup and switches to HTTPS on the same port
 (session cookies become `Secure` automatically).
 
+### Environment variables
+
+| Var | Default | Purpose |
+|---|---|---|
+| `PORT` | `9160` | HTTP/HTTPS listen port |
+| `TZ` | `Etc/UTC` | Timezone for log timestamps |
+| `ADMIN_PASSWORD` | - | Seeds the first account (user `admin`) on first boot only |
+| `SUITE_SECRET` | - | Shared HMAC key that enables SSO across the Node siblings (see above) |
+| `BOARD_DIR` | `/boards` | Where board uploads land; the upload UI hides itself if it isn't a directory |
+| `TLS_CERT` / `TLS_KEY` | `<data>/certs/server.*` | Cert/key paths; HTTPS turns on when both exist |
+| `COOKIE_SECURE` | auto | `1` forces the `Secure` cookie flag (set it when TLS is terminated by a reverse proxy, not by this app); `0` forces it off |
+| `TRUST_PROXY` | - | `1` = honor `X-Forwarded-For` for the login rate limiter (only behind a reverse proxy you control; the last hop is used) |
+| `LAUNCHCANVAS_DATA` | `./data` | Data directory (SQLite + certs) |
+
 ## Security posture
 
 Same trusted-LAN posture as the family: per-user accounts with scrypt
-hashes, no public exposure, TLS optional but one script away. The SSO token adds two facts
-worth knowing. First, possession of `SUITE_SECRET` is possession of the
-suite - treat it like the other suite secrets (it lives only in compose
-override files). Second, tokens are stateless: revocation is expiry (7
-days) or secret rotation, and a portal password change does not invalidate
-tokens already minted - rotate the secret when it matters.
+hashes, no public exposure, TLS optional but one script away. A few facts
+about the accounts and the SSO token are worth knowing before you rely on
+them:
+
+- **Every account is a full suite administrator.** There are no roles: any
+  signed-in user can add users, remove others, and reset another user's
+  password without knowing it. A portal account is effectively suite root -
+  one phished account is the whole suite. Hand out accounts accordingly.
+- **`SUITE_SECRET` is possession of the suite.** Anyone who has it can mint
+  a valid token for any username. Treat it like the other suite secrets (it
+  lives only in compose override files).
+- **The token is stateless, so revocation is coarse.** A minted token is
+  valid until it expires (24h, re-minted on every portal visit) or until
+  `SUITE_SECRET` is rotated. Consequences: a portal password change does not
+  invalidate already-minted tokens, and **deleting a user does not reach into
+  their browser** - their existing token keeps working on the sibling apps
+  for up to 24h. To cut an off-boarded user off immediately, rotate
+  `SUITE_SECRET` (which signs everyone out - they log in once more).
+- **The SSO cookie is host-wide, not port-scoped.** Browsers send it to
+  every service on the portal's hostname - including login-free PingCanvas
+  and any non-suite app you happen to run there (an Uptime Kuma on the same
+  host, say). Any such app can read a valid 24h suite credential from its
+  request headers. Run only trusted services on the portal's hostname, or
+  give the portal its own name.
 
 ## Development
 

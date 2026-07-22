@@ -306,7 +306,7 @@
         });
         for (const b of $main.querySelectorAll('[data-del]')) {
             b.addEventListener('click', async () => {
-                if (!confirm(`Remove user "${b.dataset.name}"? Their sessions are logged out immediately.`)) return;
+                if (!confirm(`Remove user "${b.dataset.name}"?\n\nTheir portal sessions end immediately. If single sign-on is on, a suite token already in their browser keeps working on the other apps until it expires (up to 24h) - to cut that off now, rotate SUITE_SECRET (which signs everyone out).`)) return;
                 try { await api('DELETE', `/api/users/${b.dataset.del}`); renderSettings(); }
                 catch (err) { usersMsg.textContent = err.message; }
             });

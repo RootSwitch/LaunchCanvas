@@ -14,7 +14,12 @@
 const crypto = require('node:crypto');
 
 const COOKIE_NAME = 'canvas_suite';
-const TOKEN_TTL_S = 7 * 24 * 3600;
+// 24h, re-minted on every authenticated portal visit. Short by design: the
+// token is stateless, so deleting a portal user cannot reach into their
+// browser to revoke it - the only cutoffs are this expiry and rotating
+// SUITE_SECRET. A day bounds an off-boarded user's residual access; active
+// users never notice (loading the portal refreshes it).
+const TOKEN_TTL_S = 24 * 3600;
 
 function secret() {
     return process.env.SUITE_SECRET || null;

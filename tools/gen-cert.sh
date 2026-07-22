@@ -1,5 +1,5 @@
 #!/bin/sh
-# Generate a self-signed TLS certificate for AlertCanvas.
+# Generate a self-signed TLS certificate for LaunchCanvas.
 #
 #   ./tools/gen-cert.sh [hostname-or-ip ...]
 #
@@ -43,4 +43,4 @@ chown -R 1000:1000 "$DIR" 2>/dev/null || \
 
 echo ""
 echo "Wrote $DIR/server.crt and server.key (valid 10 years, SAN: $SAN)."
-echo "Restart AlertCanvas (docker compose restart) to enable HTTPS."
+echo "Restart LaunchCanvas (docker compose restart) to enable HTTPS."
