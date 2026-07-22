@@ -38,7 +38,7 @@ plain launcher with per-app logins.
 ## Features
 
 - **One login for the suite** - opt-in single sign-on across SNMPCanvas,
-  SyslogCanvas, and AlertCanvas via a signed, expiring token (7 days,
+  SyslogCanvas, and AlertCanvas via a signed, expiring token (24h,
   re-minted on every portal visit). Logging out at the portal is the
   suite-wide logout. Rotate `SUITE_SECRET` to revoke every token at once.
 - **The launcher** - a tile per app, in the family style, each linking to

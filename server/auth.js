@@ -92,7 +92,15 @@ function checkLogin(username, password) {
 // account. Recovery when every password is lost: delete data/launchcanvas.db
 // (the portal stores no history - only tile URL overrides go with it).
 function seedFromEnv() {
-    if (!anyUsers() && process.env.ADMIN_PASSWORD) createUser('admin', process.env.ADMIN_PASSWORD);
+    if (!anyUsers() && process.env.ADMIN_PASSWORD) {
+        // Seed even a short one (an unclaimed setup page is worse), but say so:
+        // the web UI enforces 8+ chars and would reject this same password.
+        if (process.env.ADMIN_PASSWORD.length < 8) {
+            console.warn(new Date().toISOString(),
+                '[auth] ADMIN_PASSWORD is shorter than the 8-character minimum the UI enforces - consider a longer one');
+        }
+        createUser('admin', process.env.ADMIN_PASSWORD);
+    }
 }
 
 // --- sessions (each owned by a user) ---
