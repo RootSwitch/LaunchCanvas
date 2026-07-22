@@ -93,10 +93,12 @@
 
     // ===== router =====
     window.addEventListener('hashchange', route);
+    const $whoami = document.getElementById('whoami');
 
     async function route() {
         const session = await GET('/api/session');
-        if (!session.authenticated) { renderLogin(session.needsSetup); return; }
+        if (!session.authenticated) { $whoami.textContent = ''; renderLogin(session.needsSetup); return; }
+        $whoami.textContent = session.user || '';
         const hash = location.hash || '#/launch';
         if (hash.startsWith('#/settings')) return renderSettings();
         return renderLaunch();
@@ -116,23 +118,25 @@
                     <path d="M39 19 L33 22.5 L33 43.5 L39 40"/>
                 </g>
             </svg> LaunchCanvas</h1>
-            <div class="sub">${needsSetup ? 'First run - choose an admin password (8+ characters).' : 'One login for the whole suite.'}</div>
+            <div class="sub">${needsSetup ? 'First run - create the first account (password 8+ characters).' : 'One login for the whole suite.'}</div>
             <form id="login-form">
-                <input type="password" id="password" placeholder="Password" autocomplete="${needsSetup ? 'new-password' : 'current-password'}" autofocus>
+                <input type="text" id="username" placeholder="Username" autocomplete="username" ${needsSetup ? 'value="admin"' : 'autofocus'}>
+                <input type="password" id="password" placeholder="Password" autocomplete="${needsSetup ? 'new-password' : 'current-password'}" ${needsSetup ? 'autofocus' : ''}>
                 ${needsSetup ? '<input type="password" id="password2" placeholder="Confirm password" autocomplete="new-password">' : ''}
-                <button type="submit">${needsSetup ? 'Set password' : 'Log in'}</button>
+                <button type="submit">${needsSetup ? 'Create account' : 'Log in'}</button>
                 <div id="login-error" class="error-text"></div>
             </form>
         </div></div>`;
         document.getElementById('login-form').addEventListener('submit', async (ev) => {
             ev.preventDefault();
+            const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             if (needsSetup && password !== document.getElementById('password2').value) {
                 document.getElementById('login-error').textContent = 'Passwords do not match.';
                 return;
             }
             try {
-                await api('POST', needsSetup ? '/api/setup' : '/api/login', { password });
+                await api('POST', needsSetup ? '/api/setup' : '/api/login', { username, password });
                 location.hash = '#/launch';
                 route();
             } catch (err) {
@@ -151,10 +155,15 @@
             const url = (s[`url_${a.key}`] || '').trim() || autoUrl(a.key);
             return `
             <a class="tile" href="${esc(url)}" target="_blank" rel="noopener">
-                <img class="tile-icon" src="${esc(a.icon)}" alt="">
-                <span class="tile-name">${esc(a.name)}</span>
-                <span class="tile-desc">${esc(a.desc)}</span>
-                <span class="tile-url">${esc(url.replace(/^https?:\/\//, '').replace(/\/(index\.html|kiosk\.html).*$/, '').replace(/\/$/, ''))}</span>
+                <img class="tile-shot" src="tiles/${esc(a.key)}.jpg" alt="">
+                <span class="tile-body">
+                    <img class="tile-icon" src="${esc(a.icon)}" alt="">
+                    <span class="tile-text">
+                        <span class="tile-name">${esc(a.name)}</span>
+                        <span class="tile-desc">${esc(a.desc)}</span>
+                        <span class="tile-url">${esc(url.replace(/^https?:\/\//, '').replace(/\/(index\.html|kiosk\.html).*$/, '').replace(/\/$/, ''))}</span>
+                    </span>
+                </span>
             </a>`;
         }).join('');
 
@@ -219,8 +228,12 @@
     // ===== settings =====
     async function renderSettings() {
         setNav('settings', true);
-        let s;
-        try { s = await GET('/api/settings'); } catch (e) { return; }
+        let s, usersResp;
+        try {
+            s = await GET('/api/settings');
+            usersResp = await GET('/api/users');
+        } catch (e) { return; }
+        const users = usersResp.users || [];
 
         const rows = APPS.map((a) => `
             <label>${esc(a.name)} URL</label>
@@ -243,7 +256,30 @@
                 : 'Off. Set the same SUITE_SECRET environment variable on LaunchCanvas, SNMPCanvas, SyslogCanvas, and AlertCanvas to make one login cover the suite.'}</div>
         </div>
         <div class="panel">
-            <h2>Change password</h2>
+            <h2>Users</h2>
+            <div class="section-note">One account per human, suite-wide: the SSO token carries the
+                username into every app. No roles - every account is equal, can manage accounts,
+                and sees the same suite. Guard rails: the last account and your own account
+                cannot be deleted.</div>
+            <table class="list">
+                <thead><tr><th>Username</th><th>Created</th><th></th><th></th></tr></thead>
+                <tbody>${users.map((u) => `
+                    <tr>
+                        <td>${esc(u.username)}${u.self ? ' <span class="muted small">(you)</span>' : ''}</td>
+                        <td class="muted small">${esc((u.createdAt || '').slice(0, 10))}</td>
+                        <td><button data-reset="${u.id}" data-name="${esc(u.username)}" title="Set a new password; their other sessions are logged out">Reset password</button></td>
+                        <td>${u.self ? '' : `<button class="btn-danger" data-del="${u.id}" data-name="${esc(u.username)}">Remove</button>`}</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>
+            <div class="form-grid" style="margin-top:12px">
+                <label>New username</label><input type="text" id="nu-name" autocomplete="off">
+                <label>Password</label><input type="password" id="nu-pass" autocomplete="new-password">
+            </div>
+            <div class="form-actions"><button class="btn-primary" id="add-user">Add user</button><span id="users-msg" class="muted"></span></div>
+        </div>
+        <div class="panel">
+            <h2>Change my password</h2>
             <div class="form-grid">
                 <label>Current password</label><input type="password" id="pw-current" autocomplete="current-password">
                 <label>New password</label><input type="password" id="pw-next" autocomplete="new-password">
@@ -258,6 +294,31 @@
             try { await api('PATCH', '/api/settings', body); m.textContent = 'Saved.'; }
             catch (err) { m.textContent = err.message; }
         });
+        const usersMsg = document.getElementById('users-msg');
+        document.getElementById('add-user').addEventListener('click', async () => {
+            try {
+                await api('POST', '/api/users', {
+                    username: document.getElementById('nu-name').value,
+                    password: document.getElementById('nu-pass').value
+                });
+                renderSettings();
+            } catch (err) { usersMsg.textContent = err.message; }
+        });
+        for (const b of $main.querySelectorAll('[data-del]')) {
+            b.addEventListener('click', async () => {
+                if (!confirm(`Remove user "${b.dataset.name}"? Their sessions are logged out immediately.`)) return;
+                try { await api('DELETE', `/api/users/${b.dataset.del}`); renderSettings(); }
+                catch (err) { usersMsg.textContent = err.message; }
+            });
+        }
+        for (const b of $main.querySelectorAll('[data-reset]')) {
+            b.addEventListener('click', async () => {
+                const pw = prompt(`New password for "${b.dataset.name}" (8+ characters):`);
+                if (pw === null) return;
+                try { await api('POST', `/api/users/${b.dataset.reset}/password`, { password: pw }); usersMsg.textContent = `Password reset for ${b.dataset.name}.`; }
+                catch (err) { usersMsg.textContent = err.message; }
+            });
+        }
         document.getElementById('save-pw').addEventListener('click', async () => {
             const m = document.getElementById('pw-msg');
             try {

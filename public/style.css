@@ -362,21 +362,22 @@ table.thresholds .dir {
 }
 
 /* ===== LaunchCanvas: the tile launcher ===== */
+/* Hero tiles: a live-looking screenshot from each app's own hero image, with
+   the app's mark, name, and destination underneath. Roughly two-up on a
+   desktop, one-up on narrow screens. */
 .tile-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    gap: 18px;
     margin-bottom: 20px;
 }
 .tile {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    padding: 26px 18px 18px;
     background: var(--se-panel);
     border: 1px solid var(--se-border);
     border-radius: 10px;
+    overflow: hidden;
     text-decoration: none;
     color: var(--se-text);
     transition: transform 0.08s ease, border-color 0.08s ease, box-shadow 0.08s ease;
@@ -386,16 +387,32 @@ table.thresholds .dir {
     border-color: var(--se-accent);
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
 }
-.tile-icon { width: 56px; height: 56px; }
+.tile-shot {
+    width: 100%;
+    aspect-ratio: 560 / 330;
+    object-fit: cover;
+    display: block;
+    border-bottom: 1px solid var(--se-border);
+}
+.tile-body {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+}
+.tile-icon { width: 40px; height: 40px; flex: none; }
+.tile-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .tile-name { font-size: 1.05rem; font-weight: 600; }
-.tile-desc { font-size: 0.82rem; color: var(--se-muted); text-align: center; }
+.tile-desc { font-size: 0.82rem; color: var(--se-muted); }
 .tile-url {
     font-size: 0.72rem;
     color: var(--se-muted);
     opacity: 0.75;
     font-family: ui-monospace, monospace;
     word-break: break-all;
-    text-align: center;
+}
+@media (max-width: 520px) {
+    .tile-grid { grid-template-columns: 1fr; }
 }
 .board-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .board-row .spacer { flex: 1; }

@@ -1,11 +1,11 @@
 'use strict';
-// Single shared password (scrypt) + opaque session tokens. The DB stores only
+// Multi-user accounts (scrypt) + opaque session tokens, each owned by a user. The DB stores only
 // sha256(token); the cookie holds the raw token. No framework: cookie parsing
 // and serialization are the ~10 lines they actually are. (Byte-sibling of the
 // SNMPCanvas/SyslogCanvas/AlertCanvas auth module.)
 
 const crypto = require('node:crypto');
-const { db, getSetting, setSetting } = require('./db');
+const { db } = require('./db');
 
 const SCRYPT = { N: 16384, r: 8, p: 1 };
 const SESSION_TTL_S = 30 * 24 * 3600;       // 30 days, sliding
@@ -38,48 +38,99 @@ function verifyPassword(password, stored) {
     }
 }
 
-function passwordIsSet() { return getSetting('password') !== null; }
-function setPassword(password) { setSetting('password', hashPassword(password)); }
-function checkPassword(password) {
-    const stored = getSetting('password');
-    return stored !== null && verifyPassword(password, stored);
+// --- users (multi-user, no roles: every account is equal) ---
+// The portal is where accounts live for the whole suite - the SSO token
+// carries the username, so per-user identity reaches every sibling without
+// any of them growing a users table.
+function userCount() { return db.prepare('SELECT count(*) AS c FROM users').get().c; }
+function anyUsers() { return userCount() > 0; }
+
+function createUser(username, password) {
+    const name = String(username || '').trim();
+    if (!/^[A-Za-z0-9._-]{2,32}$/.test(name)) {
+        throw new Error('Username: 2-32 characters, letters/digits/dot/dash/underscore.');
+    }
+    if (db.prepare('SELECT 1 FROM users WHERE username = ?').get(name)) {
+        throw new Error('That username already exists.');
+    }
+    db.prepare('INSERT INTO users (username, password, created_ts) VALUES (?, ?, ?)')
+        .run(name, hashPassword(password), Math.floor(Date.now() / 1000));
+    return name;
 }
 
-// Seed from env on first boot so a compose file can pre-set the password.
+function listUsers() {
+    return db.prepare('SELECT id, username, created_ts FROM users ORDER BY username').all();
+}
+
+function deleteUser(id) {
+    const u = db.prepare('SELECT id, username FROM users WHERE id = ?').get(id);
+    if (!u) throw new Error('No such user.');
+    if (userCount() <= 1) throw new Error('Cannot delete the last user.');
+    db.prepare('DELETE FROM users WHERE id = ?').run(id);
+    db.prepare('DELETE FROM sessions WHERE username = ?').run(u.username);
+    return u.username;
+}
+
+function setUserPassword(username, password) {
+    const r = db.prepare('UPDATE users SET password = ? WHERE username = ?')
+        .run(hashPassword(password), username);
+    if (r.changes === 0) throw new Error('No such user.');
+}
+
+// Returns the canonical username on success (the row's casing, not the
+// attempt's), null on failure. Verifies against a dummy hash when the user
+// does not exist so timing does not reveal which usernames are real.
+const DUMMY_HASH = hashPassword('no-such-user-timing-pad');
+function checkLogin(username, password) {
+    const row = db.prepare('SELECT username, password FROM users WHERE username = ?')
+        .get(String(username || '').trim());
+    const ok = verifyPassword(String(password || ''), row ? row.password : DUMMY_HASH);
+    return (row && ok) ? row.username : null;
+}
+
+// Seed from env on first boot so a compose file can pre-set the first
+// account. Recovery when every password is lost: delete data/launchcanvas.db
+// (the portal stores no history - only tile URL overrides go with it).
 function seedFromEnv() {
-    if (!passwordIsSet() && process.env.ADMIN_PASSWORD) setPassword(process.env.ADMIN_PASSWORD);
+    if (!anyUsers() && process.env.ADMIN_PASSWORD) createUser('admin', process.env.ADMIN_PASSWORD);
 }
 
-// --- sessions ---
+// --- sessions (each owned by a user) ---
 const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
 
-function createSession() {
+function createSession(username) {
     const token = crypto.randomBytes(32).toString('base64url');
     const now = Math.floor(Date.now() / 1000);
-    db.prepare('INSERT INTO sessions (token_hash, created_ts, expires_ts) VALUES (?, ?, ?)')
-        .run(sha256(token), now, now + SESSION_TTL_S);
+    db.prepare('INSERT INTO sessions (token_hash, username, created_ts, expires_ts) VALUES (?, ?, ?, ?)')
+        .run(sha256(token), String(username), now, now + SESSION_TTL_S);
     return token;
 }
 
+// Returns the owning username (truthy) or null.
 function validateSession(token) {
-    if (!token) return false;
+    if (!token) return null;
     const now = Math.floor(Date.now() / 1000);
-    const row = db.prepare('SELECT token_hash, expires_ts FROM sessions WHERE token_hash = ?').get(sha256(token));
-    if (!row || row.expires_ts <= now) return false;
+    const row = db.prepare('SELECT token_hash, username, expires_ts FROM sessions WHERE token_hash = ?').get(sha256(token));
+    if (!row || row.expires_ts <= now) return null;
     if (row.expires_ts - now < SESSION_REFRESH_S) {
         db.prepare('UPDATE sessions SET expires_ts = ? WHERE token_hash = ?').run(now + SESSION_TTL_S, row.token_hash);
     }
-    return true;
+    return row.username || 'admin';
 }
 
 function destroySession(token) {
     if (token) db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha256(token));
 }
 
-// After a password change: every session except the one making the change.
-function destroyOtherSessions(token) {
-    if (token) db.prepare('DELETE FROM sessions WHERE token_hash != ?').run(sha256(token));
-    else db.prepare('DELETE FROM sessions').run();
+// After a password change: that user's every session except the one making
+// the change. (An admin reset of ANOTHER user passes exceptToken = null.)
+function destroyUserSessions(username, exceptToken) {
+    if (exceptToken) {
+        db.prepare('DELETE FROM sessions WHERE username = ? AND token_hash != ?')
+            .run(username, sha256(exceptToken));
+    } else {
+        db.prepare('DELETE FROM sessions WHERE username = ?').run(username);
+    }
 }
 
 function pruneSessions() {
@@ -142,8 +193,8 @@ function recordLoginFailure(ip) {
 function recordLoginSuccess(ip) { failures.delete(ip); }
 
 module.exports = {
-    passwordIsSet, setPassword, checkPassword, seedFromEnv,
-    createSession, validateSession, destroySession, destroyOtherSessions, pruneSessions,
+    anyUsers, userCount, createUser, listUsers, deleteUser, setUserPassword, checkLogin, seedFromEnv,
+    createSession, validateSession, destroySession, destroyUserSessions, pruneSessions,
     sessionCookie, clearCookie, tokenFromRequest,
     loginAllowed, recordLoginFailure, recordLoginSuccess
 };

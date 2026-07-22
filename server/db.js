@@ -21,12 +21,37 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS users (
+  id         INTEGER PRIMARY KEY,
+  username   TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  password   TEXT NOT NULL,
+  created_ts INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS sessions (
   token_hash TEXT PRIMARY KEY,
+  username   TEXT,
   created_ts INTEGER NOT NULL,
   expires_ts INTEGER NOT NULL
 );
 `);
+
+// --- lightweight migrations for databases created by earlier versions ---
+const sessionCols = db.prepare('PRAGMA table_info(sessions)').all().map((c) => c.name);
+if (!sessionCols.includes('username')) db.exec('ALTER TABLE sessions ADD COLUMN username TEXT');
+
+// 0.1.x stored ONE shared password in settings. It becomes the first user,
+// named admin, keeping the same hash - nobody re-enters anything.
+(function migrateSinglePassword() {
+    const legacy = db.prepare("SELECT value FROM settings WHERE key = 'password'").get();
+    if (!legacy) return;
+    const count = db.prepare('SELECT count(*) AS c FROM users').get().c;
+    if (count === 0) {
+        db.prepare('INSERT INTO users (username, password, created_ts) VALUES (?, ?, ?)')
+            .run('admin', legacy.value, Math.floor(Date.now() / 1000));
+    }
+    db.prepare("DELETE FROM settings WHERE key = 'password'").run();
+})();
 
 // Tile URL overrides: empty string = derive from the browser's own location
 // (portal hostname + each app's stock port). Set a value only when an app

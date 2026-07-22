@@ -51,11 +51,14 @@ plain launcher with per-app logins.
   to the directory the PingCanvas kiosk reads, from the browser. Validated,
   size-capped, written atomically, and the previous board is kept as a
   one-click backup. The SCP step is gone.
-- **Single shared password** for the portal (scrypt-hashed), sessions,
-  login rate limiting, automatic HTTPS when a certificate exists - the
-  family standard. The username claim is already in the token, so per-user
-  logins are a portal-side addition when that day comes, not a five-app
-  rework.
+- **Per-user accounts, suite-wide** - every human gets a username and
+  password at the portal (scrypt-hashed), and the SSO token carries the
+  username into every app - so multi-user reached the whole suite as a
+  portal-side feature, not a five-app rework. No roles: every account is
+  equal and can manage accounts; the last account and your own cannot be
+  deleted. Sessions, login rate limiting, and automatic HTTPS are the
+  family standard. Lost every password? Delete data/launchcanvas.db - the
+  portal keeps no history, only tile URL overrides.
 - **29 themes** carried over from CrossCanvas's palette family, grouped the
   same way (Paper / Warm / Cool / Night / Screen).
 
@@ -89,8 +92,8 @@ mkdir -p data && sudo chown 1000:1000 data   # container runs as uid 1000
 docker compose up -d --build
 ```
 
-Open `http://host:9160`, set the admin password on the first-run page, and
-you have a launcher. (The default port sits one door down from SNMPCanvas's
+Open `http://host:9160`, create the first account on the first-run page,
+and you have a launcher. (The default port sits one door down from SNMPCanvas's
 9161 - the 916x row reads portal, poller, alerter.)
 
 One first-run note: the setup page belongs to whoever reaches the port
@@ -148,8 +151,8 @@ server detects the pair at startup and switches to HTTPS on the same port
 
 ## Security posture
 
-Same trusted-LAN posture as the family: one shared password, no public
-exposure, TLS optional but one script away. The SSO token adds two facts
+Same trusted-LAN posture as the family: per-user accounts with scrypt
+hashes, no public exposure, TLS optional but one script away. The SSO token adds two facts
 worth knowing. First, possession of `SUITE_SECRET` is possession of the
 suite - treat it like the other suite secrets (it lives only in compose
 override files). Second, tokens are stateless: revocation is expiry (7

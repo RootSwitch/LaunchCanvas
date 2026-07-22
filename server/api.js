@@ -41,10 +41,11 @@ function clientIp(req) {
 }
 
 // Both cookies on login: the local portal session plus (when SUITE_SECRET is
-// set) the host-wide SSO token every sibling accepts.
-function setAuthCookies(res, sessionToken) {
+// set) the host-wide SSO token every sibling accepts - carrying the username,
+// so per-user identity travels the suite.
+function setAuthCookies(res, sessionToken, username) {
     const cookies = [auth.sessionCookie(sessionToken)];
-    const t = token.mint('admin');
+    const t = token.mint(username);
     if (t) cookies.push(token.cookie(t));
     res.setHeader('Set-Cookie', cookies);
 }
@@ -72,34 +73,37 @@ const routes = [
         ok(res, { ok: true, version: require('../package.json').version, sso: token.enabled() }) },
 
     { method: 'GET', path: /^\/api\/session$/, authRequired: false, handler: (req, res) => {
-        const authed = auth.validateSession(auth.tokenFromRequest(req));
+        const user = auth.validateSession(auth.tokenFromRequest(req));
         // Re-mint the SSO token on every authenticated visit so it slides
         // with use instead of dying mid-week.
-        if (authed) {
-            const t = token.mint('admin');
+        if (user) {
+            const t = token.mint(user);
             if (t) res.setHeader('Set-Cookie', token.cookie(t));
         }
-        ok(res, { authenticated: authed, needsSetup: !auth.passwordIsSet(), sso: token.enabled() });
+        ok(res, { authenticated: !!user, user: user || null, needsSetup: !auth.anyUsers(), sso: token.enabled() });
     } },
 
     { method: 'POST', path: /^\/api\/setup$/, authRequired: false, handler: (req, res, p, body) => {
-        if (auth.passwordIsSet()) return json(res, 409, { error: 'already configured' });
+        if (auth.anyUsers()) return json(res, 409, { error: 'already configured' });
         if (!body.password || String(body.password).length < 8) return bad(res, 'Password must be at least 8 characters.');
-        auth.setPassword(String(body.password));
-        setAuthCookies(res, auth.createSession());
-        ok(res);
+        let name;
+        try { name = auth.createUser(String(body.username || 'admin'), String(body.password)); }
+        catch (err) { return bad(res, err.message); }
+        setAuthCookies(res, auth.createSession(name), name);
+        ok(res, { user: name });
     } },
 
     { method: 'POST', path: /^\/api\/login$/, authRequired: false, handler: (req, res, p, body) => {
         const ip = clientIp(req);
         if (!auth.loginAllowed(ip)) return json(res, 429, { error: 'Too many attempts - wait a minute.' });
-        if (!auth.checkPassword(String(body.password || ''))) {
+        const name = auth.checkLogin(body.username, body.password);
+        if (!name) {
             auth.recordLoginFailure(ip);
-            return json(res, 401, { error: 'Wrong password.' });
+            return json(res, 401, { error: 'Wrong username or password.' });
         }
         auth.recordLoginSuccess(ip);
-        setAuthCookies(res, auth.createSession());
-        ok(res);
+        setAuthCookies(res, auth.createSession(name), name);
+        ok(res, { user: name });
     } },
 
     { method: 'POST', path: /^\/api\/logout$/, authRequired: false, handler: (req, res) => {
@@ -128,10 +132,45 @@ const routes = [
     } },
 
     { method: 'POST', path: /^\/api\/settings\/password$/, handler: (req, res, p, body) => {
-        if (!auth.checkPassword(String(body.current || ''))) return json(res, 401, { error: 'Current password is wrong.' });
+        const me = auth.validateSession(auth.tokenFromRequest(req));
+        if (!auth.checkLogin(me, String(body.current || ''))) return json(res, 401, { error: 'Current password is wrong.' });
         if (!body.next || String(body.next).length < 8) return bad(res, 'New password must be at least 8 characters.');
-        auth.setPassword(String(body.next));
-        auth.destroyOtherSessions(auth.tokenFromRequest(req));
+        auth.setUserPassword(me, String(body.next));
+        auth.destroyUserSessions(me, auth.tokenFromRequest(req));
+        ok(res);
+    } },
+
+    // --- users (no roles: any signed-in account manages accounts; the guard
+    // rails are "no deleting the last user" and "no deleting yourself") ---
+    { method: 'GET', path: /^\/api\/users$/, handler: (req, res) => {
+        const me = auth.validateSession(auth.tokenFromRequest(req));
+        ok(res, { users: auth.listUsers().map((u) => ({
+            id: u.id, username: u.username,
+            createdAt: new Date(u.created_ts * 1000).toISOString(),
+            self: u.username === me
+        })) });
+    } },
+
+    { method: 'POST', path: /^\/api\/users$/, handler: (req, res, p, body) => {
+        if (!body.password || String(body.password).length < 8) return bad(res, 'Password must be at least 8 characters.');
+        try { ok(res, { user: auth.createUser(body.username, String(body.password)) }); }
+        catch (err) { bad(res, err.message); }
+    } },
+
+    { method: 'DELETE', path: /^\/api\/users\/(\d+)$/, handler: (req, res, p) => {
+        const me = auth.validateSession(auth.tokenFromRequest(req));
+        const target = auth.listUsers().find((u) => u.id === Number(p[0]));
+        if (target && target.username === me) return bad(res, 'You cannot delete the account you are signed in with.');
+        try { auth.deleteUser(Number(p[0])); ok(res); }
+        catch (err) { bad(res, err.message); }
+    } },
+
+    { method: 'POST', path: /^\/api\/users\/(\d+)\/password$/, handler: (req, res, p, body) => {
+        if (!body.password || String(body.password).length < 8) return bad(res, 'Password must be at least 8 characters.');
+        const target = auth.listUsers().find((u) => u.id === Number(p[0]));
+        if (!target) return bad(res, 'No such user.');
+        auth.setUserPassword(target.username, String(body.password));
+        auth.destroyUserSessions(target.username, null);   // reset = evict their sessions
         ok(res);
     } },
 

@@ -1,6 +1,6 @@
 {
   "name": "launchcanvas",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "The Canvas suite's front door: one login, a launcher for every sibling app, and board uploads for the wall.",
   "license": "Unlicense",
   "repository": {
@@ -15,7 +15,7 @@
   "main": "server/server.js",
   "scripts": {
     "start": "node server/server.js",
-    "test": "node tools/test-token.js && node tools/charcheck.js"
+    "test": "node tools/test-token.js && node tools/test-users.js && node tools/charcheck.js"
   },
   "engines": {
     "node": ">=20"
