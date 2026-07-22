@@ -119,6 +119,7 @@
             <div class="sub">${needsSetup ? 'First run - choose an admin password (8+ characters).' : 'One login for the whole suite.'}</div>
             <form id="login-form">
                 <input type="password" id="password" placeholder="Password" autocomplete="${needsSetup ? 'new-password' : 'current-password'}" autofocus>
+                ${needsSetup ? '<input type="password" id="password2" placeholder="Confirm password" autocomplete="new-password">' : ''}
                 <button type="submit">${needsSetup ? 'Set password' : 'Log in'}</button>
                 <div id="login-error" class="error-text"></div>
             </form>
@@ -126,6 +127,10 @@
         document.getElementById('login-form').addEventListener('submit', async (ev) => {
             ev.preventDefault();
             const password = document.getElementById('password').value;
+            if (needsSetup && password !== document.getElementById('password2').value) {
+                document.getElementById('login-error').textContent = 'Passwords do not match.';
+                return;
+            }
             try {
                 await api('POST', needsSetup ? '/api/setup' : '/api/login', { password });
                 location.hash = '#/launch';
