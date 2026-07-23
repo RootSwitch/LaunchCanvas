@@ -1,9 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="#2c2c2c">
-  <path d="M32 5 L32 12" stroke-width="5" stroke-linecap="round"/>
-  <path d="M18 45 L12 59 M46 45 L52 59 M32 45 L32 59" stroke-width="5" stroke-linecap="round"/>
-  <rect x="9" y="12" width="46" height="34" rx="3" fill="#f4f1ea" stroke-width="4"/>
-  <g stroke="#3f72af" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <path d="M25 40 L25 19 L39 19 L39 40"/>
-    <path d="M39 19 L33 22.5 L33 43.5 L39 40"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- LaunchCanvas mark: the family easel, but the canvas carries an open
+       door - the suite's front entrance. Family palette throughout:
+       #262a33 tile, #a89e8f easel, #f4f1ea canvas, wood-tone door. -->
+  <rect width="64" height="64" rx="12" fill="#262a33"/>
+  <path d="M32 5 L32 12" stroke="#a89e8f" stroke-width="4" stroke-linecap="round"/>
+  <path d="M18 45 L12 59 M46 45 L52 59 M32 45 L32 59" stroke="#a89e8f" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <rect x="9" y="12" width="46" height="34" rx="3" fill="#f4f1ea" stroke="#a89e8f" stroke-width="3"/>
+  <g stroke="#8f6a38" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M25 41 L25 18 L39 18 L39 41"/>
+    <path d="M39 18 L33 21.5 L33 44 L39 41" fill="#c49b5f" fill-opacity="0.35"/>
+    <circle cx="35.5" cy="31.5" r="0.75" fill="#8f6a38"/>
   </g>
 </svg>
