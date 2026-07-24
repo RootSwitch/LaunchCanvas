@@ -275,7 +275,11 @@ async function handle(req, res, pathname, query) {
             const ct = String(req.headers['content-type'] || '');
             const hasBody = req.headers['transfer-encoding'] !== undefined ||
                 (req.headers['content-length'] && req.headers['content-length'] !== '0');
-            if (hasBody && !ct.includes('application/json')) return json(res, 415, { error: 'expected application/json' });
+            // rawBody routes accept any content type: the board upload takes
+            // the file as-is (curl --data-binary sends octet-stream) and the
+            // handler itself JSON-validates the bytes - a 415 here rejected
+            // exactly the automation the endpoint exists for.
+            if (hasBody && !route.rawBody && !ct.includes('application/json')) return json(res, 415, { error: 'expected application/json' });
             if (hasBody) {
                 try {
                     body = route.rawBody ? await readRaw(req, BOARD_MAX_BYTES) : await readJson(req);

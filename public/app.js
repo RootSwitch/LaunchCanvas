@@ -234,7 +234,10 @@
             // /data/board.xcanvas share PingCanvas's origin, so the stock URL
             // resolves; a custom url_crosscanvas is passed through untouched).
             const cc = (s.url_crosscanvas || '').trim() || autoUrl('crosscanvas');
-            window.open(cc + (cc.includes('?') ? '&' : '?') + 'board=data/board.xcanvas&fit=1', '_blank', 'noopener');
+            // Absolute path: PingCanvas's nginx serves /data at the web root,
+            // so this holds even when a custom url_crosscanvas points at the
+            // editor in a subfolder (a relative path would resolve under it).
+            window.open(cc + (cc.includes('?') ? '&' : '?') + 'board=/data/board.xcanvas&fit=1', '_blank', 'noopener');
         });
         document.getElementById('board-download')?.addEventListener('click', async () => {
             // Fetch (not a bare link) so auth failures surface in board-msg
