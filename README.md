@@ -212,6 +212,15 @@ them:
   host, say). Any such app can read a valid 24h suite credential from its
   request headers. Run only trusted services on the portal's hostname, or
   give the portal its own name.
+- **Fresh sub-apps can't be claimed out from under the suite.** On a new
+  install the SSO token logs you straight into SNMPCanvas / SyslogCanvas /
+  AlertCanvas, so you never meet their first-run password page - and it
+  would be a hazard if a passer-by did (a mistyped port, an inherited
+  bookmark). With `SUITE_SECRET` set, those apps refuse first-run setup
+  from anyone not already signed in through the portal; sign in first,
+  then set a local fallback password from each app's Settings only if you
+  want one. (Without SSO, each app keeps its own claim-on-first-visit
+  flow.)
 
 ## Development
 
