@@ -14,7 +14,7 @@
 
     // Shared light-chrome status treatment: darker green/red/amber so badges
     // and warn pills keep contrast on pale panels. (--se-warn is an
-    // Family addition - warn severity is used here, so the default
+    // A family addition - warn severity is used here, so the default
     // #d9a92f amber needs a legible light-theme counterpart.)
     const LIGHT_STATUS = { '--se-up': '#1e7a43', '--se-down': '#c23934', '--se-warn': '#9a7415' };
 

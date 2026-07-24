@@ -8,7 +8,7 @@
 // Payload: { u: username, iat: seconds, exp: seconds }
 //
 // Cookies ignore ports, so one host-wide cookie reaches every app on the box.
-// Revocation is by expiry (7 days, re-minted on every authenticated portal
+// Revocation is by expiry (24 hours, re-minted on every authenticated portal
 // visit) or by rotating SUITE_SECRET - the token is stateless by design.
 
 const crypto = require('node:crypto');

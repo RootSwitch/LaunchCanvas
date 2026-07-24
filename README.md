@@ -50,10 +50,15 @@ plain launcher with per-app logins.
   Tile URLs derive automatically from the portal's own address and each
   app's stock port; override any of them in Settings when an app lives
   somewhere unusual.
-- **Board upload** - send an `.xcanvas` exported from CrossCanvas straight
-  to the directory the PingCanvas kiosk reads, from the browser. Validated,
-  size-capped, written atomically, and the previous board is kept as a
-  one-click backup. The SCP step is gone.
+- **Board upload, download, and round-trip editing** - send an `.xcanvas`
+  exported from CrossCanvas straight to the directory the PingCanvas kiosk
+  reads, from the browser; validated, size-capped, written atomically, and
+  the previous board is kept as a one-click backup. **Download** grabs the
+  live board back out (e.g. one the setup script's `--scan` seeded), and
+  **Edit in CrossCanvas** opens it directly in the editor - arrange, File >
+  Save, upload, done. The SCP step is gone in both directions. The raw
+  endpoints (`GET`/`POST /api/board`) accept any content type, so `curl
+  --data-binary` automation works too.
 - **Per-user accounts, suite-wide** - every human gets a username and
   password at the portal (scrypt-hashed), and the SSO token carries the
   username into every app - so multi-user reached the whole suite as a
@@ -67,8 +72,8 @@ plain launcher with per-app logins.
   one-pager per app, served by the portal with no login required. The address
   you give someone is now also the place they learn the suite - no tour of
   six GitHub READMEs needed to get started.
-- **29 themes** carried over from CrossCanvas's palette family, grouped the
-  same way (Paper / Warm / Cool / Night / Screen).
+- **30 themes** - Classic plus 29 shared with CrossCanvas's palette family,
+  grouped the same way (Paper / Warm / Cool / Night / Screen).
 
 ## Small on purpose
 
@@ -80,6 +85,11 @@ choice - and if you want it to become something bigger, the license makes
 forking genuinely easy.
 
 ## Quick start (Docker)
+
+> **Installed via the [canvas-suite](https://github.com/RootSwitch/canvas-suite)
+> script?** Skip this section - the override (SUITE_SECRET, board dir
+> mount) is already written and the portal is running on 9160. Just create
+> the first account on first visit.
 
 ```yaml
 # docker-compose.yml (in the repo; abridged)
@@ -218,7 +228,7 @@ server/server.js   http(s) + static + /api dispatch
 server/api.js      routes: session, settings, board upload, password
 server/auth.js     scrypt password, sessions, rate limiting (family standard)
 server/token.js    the SSO token: mint + verify (HMAC-SHA256, SUITE_SECRET)
-server/db.js       SQLite: settings + sessions, nothing else
+server/db.js       SQLite: settings + sessions + user accounts, nothing else
 public/            login + launcher + settings, themes.js, app icons
 public/docs.html   in-app suite docs (+ quickstart.html, apps.html) - no login
 tools/             gen-cert.sh, charcheck.js, test-token.js
