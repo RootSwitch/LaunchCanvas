@@ -90,6 +90,10 @@ forking genuinely easy.
 > script?** Skip this section - the override (SUITE_SECRET, board dir
 > mount) is already written and the portal is running on 9160. Just create
 > the first account on first visit.
+> **On Windows?** Skip the `chown` steps (Docker Desktop handles ownership);
+> set env vars PowerShell-style (`$env:NAME = 'value'; npm start`); and
+> `tools/gen-cert.sh` needs Git Bash or WSL - or drop your own PEM pair at
+> the cert paths.
 
 ```yaml
 # docker-compose.yml (in the repo; abridged)
