@@ -139,7 +139,10 @@
     }
 
     // ===== the launcher =====
-    async function renderLaunch() {
+    // notice: a one-line confirmation to show after the page is built. Setting
+    // it before a re-render was pointless - renderLaunch replaces $main, so an
+    // "uploaded" message written into the old DOM never reached a human eye.
+    async function renderLaunch(notice) {
         setNav('launch', true);
         let s;
         try { s = await GET('/api/settings'); } catch (e) { return; }
@@ -177,22 +180,34 @@
         }).join('');
 
         const b = s.board || {};
+        // CrossCanvas resolves ?board= against its OWN origin and refuses
+        // anything else, and the board file lives on this box (the directory
+        // the wall's container shares). So an editor configured on a different
+        // host can never load it: that link opens a blank editor and an alert.
+        // Offer no button rather than one that always fails.
+        const ccUrl = (s.url_crosscanvas || '').trim() || autoUrl('crosscanvas');
+        let ccSameHost = false;
+        try { ccSameHost = new URL(ccUrl, location.href).hostname === location.hostname; }
+        catch (_) { /* unparseable override - no Edit button */ }
         const boardBlock = b.enabled ? `
             <div class="panel" id="board-panel">
                 <h2>Wall board</h2>
-                <div class="section-note">Put a board where the wall reads it - upload an .xcanvas exported
+                <div class="section-note">${b.writable
+                    ? `Put a board where the wall reads it - upload an .xcanvas exported
                     from CrossCanvas and the kiosk picks it up on its next refresh. The previous board is
-                    kept as a one-step backup.</div>
+                    kept as a one-step backup.`
+                    : `The board directory is mounted read-only, so uploads are off here - download the
+                    current board, or re-mount ${esc(b.dir || '')} writable to upload from this page.`}</div>
                 <div class="board-row">
                     <span id="board-state" class="muted">${b.exists
                         ? `board.xcanvas - ${(b.size / 1024).toFixed(1)} KB, updated ${esc((b.modifiedAt || '').replace('T', ' ').slice(0, 16))}Z`
                         : 'No board uploaded yet.'}</span>
                     <span class="spacer"></span>
-                    <input type="file" id="board-file" accept=".xcanvas,.netdraw,application/json" style="display:none">
-                    <button id="board-upload">Upload board</button>
+                    ${b.writable ? `<input type="file" id="board-file" accept=".xcanvas,.netdraw,application/json" style="display:none">
+                    <button id="board-upload">Upload board</button>` : ''}
                     ${b.exists ? '<button id="board-download" title="Download the current board - edit it in CrossCanvas, then upload it back">Download</button>' : ''}
-                    ${b.exists ? '<button id="board-edit" title="Open the current board in the editor - then File > Save and upload it back here">Edit in CrossCanvas</button>' : ''}
-                    ${b.backupExists ? '<button id="board-restore" title="Restore the previous board">Restore backup</button>' : ''}
+                    ${b.exists && ccSameHost ? '<button id="board-edit" title="Open the current board in the editor - then File > Save and upload it back here">Edit in CrossCanvas</button>' : ''}
+                    ${b.writable && b.backupExists ? '<button id="board-restore" title="Restore the previous board">Restore backup</button>' : ''}
                 </div>
                 <div id="board-msg" class="muted small"></div>
             </div>` : `
@@ -211,6 +226,7 @@
 
         const fileInput = document.getElementById('board-file');
         const msg = document.getElementById('board-msg');
+        if (notice && msg) msg.textContent = notice;
         document.getElementById('board-upload')?.addEventListener('click', () => fileInput.click());
         fileInput?.addEventListener('change', () => {
             const f = fileInput.files[0];
@@ -220,8 +236,10 @@
             reader.onload = async () => {
                 try {
                     await api('POST', '/api/board', reader.result);
-                    msg.textContent = 'Board updated. The kiosk shows it on its next poll.';
-                    renderLaunch();
+                    // The message has to travel through the re-render (which
+                    // is what refreshes the size/timestamp line), not be
+                    // written into the DOM the re-render is about to replace.
+                    renderLaunch('Board updated. The kiosk shows it on its next poll.');
                 } catch (err) {
                     msg.textContent = `Upload failed: ${err.message}`;
                 }
@@ -232,12 +250,17 @@
             // Open the live board straight in the editor - CrossCanvas's own
             // same-origin ?board= support does the loading (the editor and
             // /data/board.xcanvas share PingCanvas's origin, so the stock URL
-            // resolves; a custom url_crosscanvas is passed through untouched).
-            const cc = (s.url_crosscanvas || '').trim() || autoUrl('crosscanvas');
+            // resolves; the button is only rendered when a custom
+            // url_crosscanvas is on this host too).
             // Absolute path: PingCanvas's nginx serves /data at the web root,
             // so this holds even when a custom url_crosscanvas points at the
             // editor in a subfolder (a relative path would resolve under it).
-            window.open(cc + (cc.includes('?') ? '&' : '?') + 'board=/data/board.xcanvas&fit=1', '_blank', 'noopener');
+            // Built through URL so the query lands BEFORE any #fragment the
+            // custom URL carries - string-appending it there does nothing.
+            const u = new URL(ccUrl, location.href);
+            u.searchParams.set('board', '/data/board.xcanvas');
+            u.searchParams.set('fit', '1');
+            window.open(u.href, '_blank', 'noopener');
         });
         document.getElementById('board-download')?.addEventListener('click', async () => {
             // Fetch (not a bare link) so auth failures surface in board-msg
@@ -245,11 +268,19 @@
             try {
                 const r = await fetch('/api/board/file');
                 if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `HTTP ${r.status}`);
+                const url = URL.createObjectURL(await r.blob());
                 const a = document.createElement('a');
-                a.href = URL.createObjectURL(await r.blob());
+                a.href = url;
                 a.download = 'board.xcanvas';
+                // In the document (Firefox ignores a click on a detached
+                // anchor) and revoked on a timer: revoking right after click()
+                // raced the download and produced a zero-byte file with no
+                // error. The timeout still frees the blob instead of holding
+                // the board in memory for the life of the page.
+                document.body.appendChild(a);
                 a.click();
-                URL.revokeObjectURL(a.href);
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 60000);
             } catch (err) { msg.textContent = `Download failed: ${err.message}`; }
         });
         document.getElementById('board-restore')?.addEventListener('click', async () => {

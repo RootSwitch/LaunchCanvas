@@ -11,8 +11,9 @@ const auth = require('./auth');
 const token = require('./token');
 
 // Board uploads land in BOARD_DIR (the suite points this at the shared data
-// root PingCanvas serves). No BOARD_DIR that exists = the upload UI disables
-// itself rather than failing at the last step.
+// root PingCanvas serves). No BOARD_DIR that exists - or one mounted
+// read-only - = the upload UI disables itself rather than failing at the last
+// step.
 const BOARD_DIR = process.env.BOARD_DIR || '/boards';
 const BOARD_NAME = 'board.xcanvas';
 const BOARD_MAX_BYTES = 25 * 1024 * 1024;
@@ -55,11 +56,18 @@ function setAuthCookies(res, sessionToken, username) {
 }
 
 function boardInfo() {
-    const out = { enabled: false, exists: false, dir: BOARD_DIR };
+    const out = { enabled: false, writable: false, exists: false, dir: BOARD_DIR };
     try {
         if (!fs.statSync(BOARD_DIR).isDirectory()) return out;
     } catch (_) { return out; }
     out.enabled = true;
+    // A read-only board mount is a real deployment (share the wall's data dir
+    // :ro and drive it from elsewhere), and a directory stat says nothing
+    // about writing to it - so Upload was offered and the truth arrived as
+    // EROFS after the operator had already picked a 3 MB file. Reading is
+    // unaffected, so download and edit stay on; only writing is withdrawn.
+    try { fs.accessSync(BOARD_DIR, fs.constants.W_OK); out.writable = true; }
+    catch (_) { /* read-only mount */ }
     try {
         const st = fs.statSync(path.join(BOARD_DIR, BOARD_NAME));
         out.exists = true;
@@ -205,6 +213,7 @@ const routes = [
     { method: 'POST', path: /^\/api\/board$/, rawBody: true, handler: (req, res, p, body) => {
         const info = boardInfo();
         if (!info.enabled) return bad(res, `Board directory not available (${BOARD_DIR} is not mounted).`);
+        if (!info.writable) return bad(res, `Board directory ${BOARD_DIR} is mounted read-only - uploads are off.`);
         let doc;
         try { doc = JSON.parse(body.toString('utf8')); } catch (_) {
             return bad(res, 'Not a valid .xcanvas file (JSON parse failed).');
@@ -226,6 +235,7 @@ const routes = [
     { method: 'POST', path: /^\/api\/board\/restore$/, handler: (req, res) => {
         const info = boardInfo();
         if (!info.enabled) return bad(res, `Board directory not available (${BOARD_DIR} is not mounted).`);
+        if (!info.writable) return bad(res, `Board directory ${BOARD_DIR} is mounted read-only - restore is off.`);
         if (!info.backupExists) return bad(res, 'No backup to restore.');
         const target = path.join(BOARD_DIR, BOARD_NAME);
         try { fs.copyFileSync(target + '.bak', target); } catch (err) {
