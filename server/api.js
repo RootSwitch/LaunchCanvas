@@ -180,6 +180,24 @@ const routes = [
 
     { method: 'GET', path: /^\/api\/board$/, handler: (req, res) => ok(res, boardInfo()) },
 
+    // Download the current board - the round trip for a board that exists only
+    // on the box (e.g. seeded by the setup script's --scan): grab it here, edit
+    // in CrossCanvas, upload it back. No SCP either direction.
+    { method: 'GET', path: /^\/api\/board\/file$/, handler: (req, res) => {
+        const info = boardInfo();
+        if (!info.enabled || !info.exists) return json(res, 404, { error: 'No board uploaded yet.' });
+        let buf;
+        try { buf = fs.readFileSync(path.join(BOARD_DIR, BOARD_NAME)); } catch (err) {
+            return json(res, 500, { error: `Read failed: ${err.message}` });
+        }
+        res.writeHead(200, {
+            'content-type': 'application/json',
+            'content-disposition': `attachment; filename="${BOARD_NAME}"`,
+            'content-length': buf.length
+        });
+        res.end(buf);
+    } },
+
     // The one server-side thing the suite's editor philosophically can't do:
     // put a board where the wall reads it, without SCP. Body is the raw
     // .xcanvas (which is JSON); validated, size-capped, written atomically,

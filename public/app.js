@@ -190,6 +190,7 @@
                     <span class="spacer"></span>
                     <input type="file" id="board-file" accept=".xcanvas,.netdraw,application/json" style="display:none">
                     <button id="board-upload">Upload board</button>
+                    ${b.exists ? '<button id="board-download" title="Download the current board - edit it in CrossCanvas, then upload it back">Download</button>' : ''}
                     ${b.backupExists ? '<button id="board-restore" title="Restore the previous board">Restore backup</button>' : ''}
                 </div>
                 <div id="board-msg" class="muted small"></div>
@@ -225,6 +226,19 @@
                 }
             };
             reader.readAsText(f);
+        });
+        document.getElementById('board-download')?.addEventListener('click', async () => {
+            // Fetch (not a bare link) so auth failures surface in board-msg
+            // instead of a browser error tab; blob keeps the filename.
+            try {
+                const r = await fetch('/api/board/file');
+                if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `HTTP ${r.status}`);
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(await r.blob());
+                a.download = 'board.xcanvas';
+                a.click();
+                URL.revokeObjectURL(a.href);
+            } catch (err) { msg.textContent = `Download failed: ${err.message}`; }
         });
         document.getElementById('board-restore')?.addEventListener('click', async () => {
             try {
