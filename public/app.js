@@ -191,6 +191,7 @@
                     <input type="file" id="board-file" accept=".xcanvas,.netdraw,application/json" style="display:none">
                     <button id="board-upload">Upload board</button>
                     ${b.exists ? '<button id="board-download" title="Download the current board - edit it in CrossCanvas, then upload it back">Download</button>' : ''}
+                    ${b.exists ? '<button id="board-edit" title="Open the current board in the editor - then File > Save and upload it back here">Edit in CrossCanvas</button>' : ''}
                     ${b.backupExists ? '<button id="board-restore" title="Restore the previous board">Restore backup</button>' : ''}
                 </div>
                 <div id="board-msg" class="muted small"></div>
@@ -226,6 +227,14 @@
                 }
             };
             reader.readAsText(f);
+        });
+        document.getElementById('board-edit')?.addEventListener('click', () => {
+            // Open the live board straight in the editor - CrossCanvas's own
+            // same-origin ?board= support does the loading (the editor and
+            // /data/board.xcanvas share PingCanvas's origin, so the stock URL
+            // resolves; a custom url_crosscanvas is passed through untouched).
+            const cc = (s.url_crosscanvas || '').trim() || autoUrl('crosscanvas');
+            window.open(cc + (cc.includes('?') ? '&' : '?') + 'board=data/board.xcanvas&fit=1', '_blank', 'noopener');
         });
         document.getElementById('board-download')?.addEventListener('click', async () => {
             // Fetch (not a bare link) so auth failures surface in board-msg
