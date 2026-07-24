@@ -88,8 +88,11 @@ forking genuinely easy.
 
 > **Installed via the [canvas-suite](https://github.com/RootSwitch/canvas-suite)
 > script?** Skip this section - the override (SUITE_SECRET, board dir
-> mount) is already written and the portal is running on 9160. Just create
-> the first account on first visit.
+> mount) is already written and the portal is running on 9160. The script
+> seeds the `admin` account and prints its password once - there is no
+> first-run page to claim, by design. Lost it? It is in
+> `/projects/launchcanvas/docker-compose.override.yml` (mode 600, so
+> `sudo grep ADMIN_PASSWORD` it). Change it from Settings once you are in.
 > **On Windows?** Skip the `chown` steps (Docker Desktop handles ownership);
 > set env vars PowerShell-style (`$env:NAME = 'value'; npm start`); and
 > `tools/gen-cert.sh` needs Git Bash or WSL - or drop your own PEM pair at
