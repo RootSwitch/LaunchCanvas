@@ -18,6 +18,8 @@ what your devices said, and
 into notifications. LaunchCanvas is the door you walk in through: log in
 once, launch any of them.
 
+**Install the whole suite in one command:** the [canvas-suite](https://github.com/RootSwitch/canvas-suite) repo is the family's landing page, with one-shot install scripts for the full six-app stack or a Pi-class PingCanvas + AlertCanvas pair.
+
 ## How it works
 
 ```
