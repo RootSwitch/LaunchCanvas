@@ -15,13 +15,22 @@ const SESSION_REFRESH_S = 15 * 24 * 3600;   // refresh when less than this remai
 // they all used a generic name.
 const COOKIE_NAME = 'launchc_session';
 
-function hashPassword(password) {
+// Async scrypt: the synchronous form serialises concurrent logins into one
+// event-loop stall (8 at once measured ~218ms in which every other request
+// waits - and the portal's login page is the suite's front door), and each
+// call sits under per-call blocking thresholds, so the burst is the cost.
+// The callback form runs on the threadpool instead.
+const scryptAsync = (password, salt, keylen, opts) => new Promise((resolve, reject) => {
+    crypto.scrypt(password, salt, keylen, opts, (err, key) => (err ? reject(err) : resolve(key)));
+});
+
+async function hashPassword(password) {
     const salt = crypto.randomBytes(16);
-    const hash = crypto.scryptSync(password, salt, 32, SCRYPT);
+    const hash = await scryptAsync(password, salt, 32, SCRYPT);
     return `scrypt$N=${SCRYPT.N},r=${SCRYPT.r},p=${SCRYPT.p}$${salt.toString('base64')}$${hash.toString('base64')}`;
 }
 
-function verifyPassword(password, stored) {
+async function verifyPassword(password, stored) {
     try {
         const [scheme, params, saltB64, hashB64] = stored.split('$');
         if (scheme !== 'scrypt') return false;
@@ -31,7 +40,7 @@ function verifyPassword(password, stored) {
             opts[k === 'N' ? 'N' : k] = parseInt(v, 10);
         }
         const expected = Buffer.from(hashB64, 'base64');
-        const actual = crypto.scryptSync(password, Buffer.from(saltB64, 'base64'), expected.length, opts);
+        const actual = await scryptAsync(password, Buffer.from(saltB64, 'base64'), expected.length, opts);
         return crypto.timingSafeEqual(actual, expected);
     } catch (_) {
         return false;
@@ -45,7 +54,7 @@ function verifyPassword(password, stored) {
 function userCount() { return db.prepare('SELECT count(*) AS c FROM users').get().c; }
 function anyUsers() { return userCount() > 0; }
 
-function createUser(username, password) {
+async function createUser(username, password) {
     const name = String(username || '').trim();
     if (!/^[A-Za-z0-9._-]{2,32}$/.test(name)) {
         throw new Error('Username: 2-32 characters, letters/digits/dot/dash/underscore.');
@@ -54,7 +63,7 @@ function createUser(username, password) {
         throw new Error('That username already exists.');
     }
     db.prepare('INSERT INTO users (username, password, created_ts) VALUES (?, ?, ?)')
-        .run(name, hashPassword(password), Math.floor(Date.now() / 1000));
+        .run(name, await hashPassword(password), Math.floor(Date.now() / 1000));
     return name;
 }
 
@@ -71,27 +80,32 @@ function deleteUser(id) {
     return u.username;
 }
 
-function setUserPassword(username, password) {
+async function setUserPassword(username, password) {
     const r = db.prepare('UPDATE users SET password = ? WHERE username = ?')
-        .run(hashPassword(password), username);
+        .run(await hashPassword(password), username);
     if (r.changes === 0) throw new Error('No such user.');
 }
 
 // Returns the canonical username on success (the row's casing, not the
 // attempt's), null on failure. Verifies against a dummy hash when the user
-// does not exist so timing does not reveal which usernames are real.
-const DUMMY_HASH = hashPassword('no-such-user-timing-pad');
-function checkLogin(username, password) {
+// does not exist so timing does not reveal which usernames are real. The pad
+// is minted lazily (hashPassword is async, so it can't be a module-load
+// constant) and memoized - one extra hash on the first bad-username attempt.
+let dummyHashP = null;
+const dummyHash = () => (dummyHashP ??= hashPassword('no-such-user-timing-pad'));
+async function checkLogin(username, password) {
     const row = db.prepare('SELECT username, password FROM users WHERE username = ?')
         .get(String(username || '').trim());
-    const ok = verifyPassword(String(password || ''), row ? row.password : DUMMY_HASH);
+    const ok = await verifyPassword(String(password || ''), row ? row.password : await dummyHash());
     return (row && ok) ? row.username : null;
 }
 
 // Seed from env on first boot so a compose file can pre-set the first
 // account. Recovery when every password is lost: delete data/launchcanvas.db
 // (the portal stores no history - only tile URL overrides go with it).
-function seedFromEnv() {
+// Async (it hashes): server.js awaits it before listening, so a request can
+// never observe the unclaimed-setup state that the seed exists to prevent.
+async function seedFromEnv() {
     if (!anyUsers() && process.env.ADMIN_PASSWORD) {
         // Seed even a short one (an unclaimed setup page is worse), but say so:
         // the web UI enforces 8+ chars and would reject this same password.
@@ -99,7 +113,7 @@ function seedFromEnv() {
             console.warn(new Date().toISOString(),
                 '[auth] ADMIN_PASSWORD is shorter than the 8-character minimum the UI enforces - consider a longer one');
         }
-        createUser('admin', process.env.ADMIN_PASSWORD);
+        await createUser('admin', process.env.ADMIN_PASSWORD);
     }
 }
 

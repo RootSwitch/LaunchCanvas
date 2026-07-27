@@ -95,20 +95,20 @@ const routes = [
         ok(res, { authenticated: !!user, user: user || null, needsSetup: !auth.anyUsers(), sso: token.enabled() });
     } },
 
-    { method: 'POST', path: /^\/api\/setup$/, authRequired: false, handler: (req, res, p, body) => {
+    { method: 'POST', path: /^\/api\/setup$/, authRequired: false, handler: async (req, res, p, body) => {
         if (auth.anyUsers()) return json(res, 409, { error: 'already configured' });
         if (!body.password || String(body.password).length < 8) return bad(res, 'Password must be at least 8 characters.');
         let name;
-        try { name = auth.createUser(String(body.username || 'admin'), String(body.password)); }
+        try { name = await auth.createUser(String(body.username || 'admin'), String(body.password)); }
         catch (err) { return bad(res, err.message); }
         setAuthCookies(res, auth.createSession(name), name);
         ok(res, { user: name });
     } },
 
-    { method: 'POST', path: /^\/api\/login$/, authRequired: false, handler: (req, res, p, body) => {
+    { method: 'POST', path: /^\/api\/login$/, authRequired: false, handler: async (req, res, p, body) => {
         const ip = clientIp(req);
         if (!auth.loginAllowed(ip)) return json(res, 429, { error: 'Too many attempts - wait a minute.' });
-        const name = auth.checkLogin(body.username, body.password);
+        const name = await auth.checkLogin(body.username, body.password);
         if (!name) {
             auth.recordLoginFailure(ip);
             return json(res, 401, { error: 'Wrong username or password.' });
@@ -143,11 +143,11 @@ const routes = [
         ok(res);
     } },
 
-    { method: 'POST', path: /^\/api\/settings\/password$/, handler: (req, res, p, body) => {
+    { method: 'POST', path: /^\/api\/settings\/password$/, handler: async (req, res, p, body) => {
         const me = auth.validateSession(auth.tokenFromRequest(req));
-        if (!auth.checkLogin(me, String(body.current || ''))) return json(res, 401, { error: 'Current password is wrong.' });
+        if (!await auth.checkLogin(me, String(body.current || ''))) return json(res, 401, { error: 'Current password is wrong.' });
         if (!body.next || String(body.next).length < 8) return bad(res, 'New password must be at least 8 characters.');
-        auth.setUserPassword(me, String(body.next));
+        await auth.setUserPassword(me, String(body.next));
         auth.destroyUserSessions(me, auth.tokenFromRequest(req));
         ok(res);
     } },
@@ -163,9 +163,9 @@ const routes = [
         })) });
     } },
 
-    { method: 'POST', path: /^\/api\/users$/, handler: (req, res, p, body) => {
+    { method: 'POST', path: /^\/api\/users$/, handler: async (req, res, p, body) => {
         if (!body.password || String(body.password).length < 8) return bad(res, 'Password must be at least 8 characters.');
-        try { ok(res, { user: auth.createUser(body.username, String(body.password)) }); }
+        try { ok(res, { user: await auth.createUser(body.username, String(body.password)) }); }
         catch (err) { bad(res, err.message); }
     } },
 
@@ -177,11 +177,11 @@ const routes = [
         catch (err) { bad(res, err.message); }
     } },
 
-    { method: 'POST', path: /^\/api\/users\/(\d+)\/password$/, handler: (req, res, p, body) => {
+    { method: 'POST', path: /^\/api\/users\/(\d+)\/password$/, handler: async (req, res, p, body) => {
         if (!body.password || String(body.password).length < 8) return bad(res, 'Password must be at least 8 characters.');
         const target = auth.listUsers().find((u) => u.id === Number(p[0]));
         if (!target) return bad(res, 'No such user.');
-        auth.setUserPassword(target.username, String(body.password));
+        await auth.setUserPassword(target.username, String(body.password));
         auth.destroyUserSessions(target.username, null);   // reset = evict their sessions
         ok(res);
     } },
