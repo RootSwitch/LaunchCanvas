@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased
+
+- **Passwords hash and verify off the event loop.** `crypto.scryptSync` in
+  `server/auth.js` serialised concurrent logins into one unbroken stall (8 at
+  once measured ~218ms in which every other request waited - and the portal's
+  login page is the suite's front door), while each single call sat under
+  per-call blocking thresholds - the burst is the cost, so a blocking sweep
+  cannot see it. Now the async `crypto.scrypt` through `createUser`,
+  `checkLogin` and `setUserPassword`, awaited in their handlers; the
+  unknown-username timing pad is minted lazily on first use, and the server
+  waits for the `ADMIN_PASSWORD` seed before listening. The stored hash format
+  is unchanged - `tools/test-users.js` still proves a hash minted by the old
+  synchronous code (the 0.1.x migration path) verifies.
+
+- **`tools/charcheck.js` now checks itself.** The checker banned em/en dashes
+  and curly quotes while containing all six as literals - and never flagged
+  itself, because its binary guard was a literal NUL byte embedded in the
+  source, which made charcheck.js a tracked file matching its own binary
+  test. The banned set is now built from code points, the NUL is constructed
+  with `String.fromCharCode(0)`, and files skipped as binary are logged by
+  name instead of passed over silently. That logging immediately caught a
+  second casualty: `tools/test-token.js` embedded two raw NUL bytes in a
+  junk-input literal and had been invisibly exempt from the style check;
+  they are now constructed too.
+
 ## 0.3.1 - 2026-07-22
 
 - The suite docs join the launcher as a sixth full tile ("Suite Docs",
