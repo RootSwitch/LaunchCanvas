@@ -15,7 +15,7 @@
     "main": "server/server.js",
     "scripts": {
         "start": "node server/server.js",
-        "test": "node tools/test-token.js && node tools/test-users.js && node tools/charcheck.js"
+        "test": "node tools/test-token.js && node tools/test-users.js && node tools/test-theme.js && node tools/charcheck.js"
     },
     "engines": {
         "node": ">=20"
