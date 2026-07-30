@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **Tile descriptions and URLs are dimmed again.** The launcher's tile styles
+  referenced two variables that do not exist - `--se-muted` on `.tile-desc` and
+  `.tile-url`, and `--se-text` on `.tile` - where the names are `--se-txt-dim`
+  and `--se-txt`. An undefined custom property does not error, it falls back to
+  the inherited value, so the description and the URL rendered at **full text
+  strength, identical to the app name above them**, and the tile lost its
+  hierarchy. `.tile` itself survived by inheriting the right colour from `body`,
+  which is why nothing looked obviously broken.
+
+  Measured against the real stylesheet before and after: with the old names,
+  `.tile-desc` and `.tile-name` both computed to `rgb(230, 233, 239)`; with the
+  fix, desc and url compute to `rgb(154, 163, 178)` and the name stays full
+  strength. A sweep of every `var(--se-*)` use across all six stylesheets found
+  no others - the two here were the only undefined references in the suite.
+
 - **The database is owner-only, as its three siblings already were.**
   `launchcanvas.db` holds every portal account's scrypt password hash and its live
   session tokens. The suite deliberately leaves the shared data directory

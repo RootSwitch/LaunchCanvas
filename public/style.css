@@ -379,7 +379,7 @@ table.thresholds .dir {
     border-radius: 10px;
     overflow: hidden;
     text-decoration: none;
-    color: var(--se-text);
+    color: var(--se-txt);
     transition: transform 0.08s ease, border-color 0.08s ease, box-shadow 0.08s ease;
 }
 .tile:hover {
@@ -403,10 +403,10 @@ table.thresholds .dir {
 .tile-icon { width: 40px; height: 40px; flex: none; }
 .tile-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .tile-name { font-size: 1.05rem; font-weight: 600; }
-.tile-desc { font-size: 0.82rem; color: var(--se-muted); }
+.tile-desc { font-size: 0.82rem; color: var(--se-txt-dim); }
 .tile-url {
     font-size: 0.72rem;
-    color: var(--se-muted);
+    color: var(--se-txt-dim);
     opacity: 0.75;
     font-family: ui-monospace, monospace;
     word-break: break-all;
