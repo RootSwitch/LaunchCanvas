@@ -10,9 +10,20 @@ const Database = require('better-sqlite3');
 const DATA_DIR = process.env.LAUNCHCANVAS_DATA || path.join(__dirname, '..', 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
-const db = new Database(path.join(DATA_DIR, 'launchcanvas.db'));
+const DB_FILE = path.join(DATA_DIR, 'launchcanvas.db');
+const db = new Database(DB_FILE);
+// Owner-only. This file holds every portal account's scrypt password hash and
+// its live session tokens, and it sits in a directory the suite deliberately
+// leaves world-readable (the kiosk's web tier runs as a different uid and serves
+// boards out of it), so the directory cannot protect it. Narrowed here rather
+// than with a process-wide umask, which would also restrict the board files that
+// web tier has to read. SQLite copies this mode onto the -wal and -shm files it
+// creates alongside. (The three sibling apps have always done this; the portal -
+// the one holding the credentials - was the one that missed it.)
+try { fs.chmodSync(DB_FILE, 0o600); } catch (_) { /* best effort - some mounts refuse chmod */ }
 db.pragma('journal_mode = WAL');
 db.pragma('synchronous = NORMAL');
+db.pragma('foreign_keys = ON');
 db.pragma('busy_timeout = 5000');
 
 db.exec(`

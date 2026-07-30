@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- **The database is owner-only, as its three siblings already were.**
+  `launchcanvas.db` holds every portal account's scrypt password hash and its live
+  session tokens. The suite deliberately leaves the shared data directory
+  world-readable so the kiosk's web tier - running as a different uid - can serve
+  boards out of it, which means the directory cannot protect the file. That is why
+  SNMPCanvas, SyslogCanvas and AlertCanvas each narrow their database to 0600 on
+  open. The portal, the one app of the four actually holding credentials, was the
+  one that missed it.
+
+  Hashes are not plaintext, so this was exposure to offline attack by a local user
+  rather than a compromise. Verified on `node:22-alpine`, the image the app ships
+  in: 644 before, 600 after, and SQLite's `-wal` file inherits the mode as claimed.
+  A Windows development box cannot demonstrate this at all - `fs.chmodSync` there
+  only toggles the read-only bit and reports 666 either way, which is part of why
+  it went unnoticed.
+
+  `foreign_keys = ON` is set at the same time for consistency with the family
+  shape. The schema has no foreign keys today, so nothing changes yet.
+
 - **Bring your own theme, without a rebuild.** A `theme.json` in the data
   directory adds a thirtieth entry to the picker, above the twenty-nine shipped
   ones. Same fifteen `--se-*` variables, hex only, and partial files are fine -
