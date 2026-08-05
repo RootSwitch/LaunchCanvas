@@ -79,9 +79,11 @@ LaunchCanvas ── one login, the tiles, board upload (you are here)</pre>
         <li>Every app is its own repository with its own README - the cards above
             link to a short in-suite guide per app, and each guide links to the
             full documentation on GitHub.</li>
-        <li>The wall reads one file: <code>board.xcanvas</code>. Upload a new one
+        <li>The board is one file: <code>board.xcanvas</code>. Upload a new one
             from the Launch page any time - the previous board is kept as a
-            one-click backup.</li>
+            one-click backup. On a private-by-default install the file itself is
+            never served; the poller publishes a sanitized wall copy (hidden
+            device fields stripped) that the kiosk reads.</li>
         <li>Live readings travel as one file too: <code>snmp-status.json</code>,
             written by SNMPCanvas, read by the wall and by AlertCanvas.</li>
         <li>All six are public domain (The Unlicense). Use them, fork them, ship

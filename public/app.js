@@ -39,7 +39,13 @@
         const node = (port) => `${https ? 'https' : 'http'}://${h}:${port}/`;
         switch (app) {
             case 'crosscanvas': return `${ping}/index.html`;
-            case 'pingcanvas': return `${ping}/kiosk.html?board=data/board.xcanvas&status=data/status.json&snmp=data/snmp-status.json`;
+            // No explicit ?board=: the kiosk's own fallback chain finds the
+            // board (the sanitized data/board.wall.xcanvas pair on
+            // private-by-default installs, data/board.xcanvas on older ones),
+            // so one tile URL serves both layouts. An explicit param here
+            // would pin the tile to whichever layout was current when it was
+            // written - which is exactly how it broke when .private landed.
+            case 'pingcanvas': return `${ping}/kiosk.html`;
             case 'snmpcanvas': return node(9161);
             case 'syslogcanvas': return node(9514);
             case 'alertcanvas': return node(9162);
@@ -180,11 +186,12 @@
         }).join('');
 
         const b = s.board || {};
-        // CrossCanvas resolves ?board= against its OWN origin and refuses
-        // anything else, and the board file lives on this box (the directory
-        // the wall's container shares). So an editor configured on a different
-        // host can never load it: that link opens a blank editor and an alert.
-        // Offer no button rather than one that always fails.
+        // The Edit button hands the board to the editor by postMessage, and
+        // CrossCanvas only accepts that handoff from an opener on its own
+        // host (its trust boundary). So an editor configured on a different
+        // host can never receive it: that flow opens a tab that waits for a
+        // board which will never be accepted. Offer no button rather than
+        // one that always fails.
         const ccUrl = (s.url_crosscanvas || '').trim() || autoUrl('crosscanvas');
         let ccSameHost = false;
         try { ccSameHost = new URL(ccUrl, location.href).hostname === location.hostname; }
@@ -246,21 +253,46 @@
             };
             reader.readAsText(f);
         });
-        document.getElementById('board-edit')?.addEventListener('click', () => {
-            // Open the live board straight in the editor - CrossCanvas's own
-            // same-origin ?board= support does the loading (the editor and
-            // /data/board.xcanvas share PingCanvas's origin, so the stock URL
-            // resolves; the button is only rendered when a custom
-            // url_crosscanvas is on this host too).
-            // Absolute path: PingCanvas's nginx serves /data at the web root,
-            // so this holds even when a custom url_crosscanvas points at the
-            // editor in a subfolder (a relative path would resolve under it).
+        document.getElementById('board-edit')?.addEventListener('click', async () => {
+            // The source board lives in the private data directory, which the
+            // web tier never serves - so the editor cannot fetch it by URL on
+            // ITS origin (that is the whole point of the layout). This page
+            // can: /api/board/file is authenticated and reads the mount, on
+            // either layout. So fetch it here, open the editor with the
+            // ?board=from-opener sentinel, and hand the document over by
+            // postMessage once the editor says it is ready. The editor only
+            // accepts the handoff from an opener on its own host, which is
+            // why the button still requires ccSameHost.
             // Built through URL so the query lands BEFORE any #fragment the
             // custom URL carries - string-appending it there does nothing.
-            const u = new URL(ccUrl, location.href);
-            u.searchParams.set('board', '/data/board.xcanvas');
-            u.searchParams.set('fit', '1');
-            window.open(u.href, '_blank', 'noopener');
+            try {
+                const r = await fetch('/api/board/file');
+                if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `HTTP ${r.status}`);
+                const doc = await r.json();
+                const u = new URL(ccUrl, location.href);
+                u.searchParams.set('board', 'from-opener');
+                u.searchParams.set('fit', '1');
+                // No 'noopener' - the handoff needs the window handle, and the
+                // editor needs window.opener to signal readiness.
+                const win = window.open(u.href, '_blank');
+                if (!win) throw new Error('the browser blocked the editor tab (popup blocker)');
+                let delivered = false;
+                const onReady = (ev) => {
+                    let sameHost = false;
+                    try { sameHost = new URL(ev.origin).hostname === location.hostname; } catch (_) { /* refuse */ }
+                    if (!sameHost || ev.source !== win) return;
+                    if (!ev.data || ev.data.type !== 'crosscanvas-ready') return;
+                    win.postMessage({ type: 'crosscanvas-board', board: doc }, ev.origin);
+                    delivered = true;
+                    window.removeEventListener('message', onReady);
+                };
+                window.addEventListener('message', onReady);
+                setTimeout(() => {
+                    window.removeEventListener('message', onReady);
+                    if (!delivered) msg.textContent =
+                        'The editor never asked for the board - it may predate the handoff (update CrossCanvas), or its tab was closed.';
+                }, 15000);
+            } catch (err) { msg.textContent = `Edit failed: ${err.message}`; }
         });
         document.getElementById('board-download')?.addEventListener('click', async () => {
             // Fetch (not a bare link) so auth failures surface in board-msg
