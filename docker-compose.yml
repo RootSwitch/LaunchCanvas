@@ -31,7 +31,7 @@ services:
       #   services:
       #     launchcanvas:
       #       volumes:
-      #         - /srv/noc-data:/boards:z
+      #         - /srv/canvas-suite:/boards:z
       - ../pingcanvas/data:/boards:z
     environment:
       # Timezone governs log timestamps

@@ -91,7 +91,7 @@ forking genuinely easy.
 > mount) is already written and the portal is running on 9160. The script
 > seeds the `admin` account and prints its password once - there is no
 > first-run page to claim, by design. Lost it? It is in
-> `/projects/launchcanvas/docker-compose.override.yml` (mode 600, so
+> `/opt/canvas-suite/launchcanvas/docker-compose.override.yml` (mode 600, so
 > `sudo grep ADMIN_PASSWORD` it). Change it from Settings once you are in.
 > **On Windows?** Skip the `chown` steps (Docker Desktop handles ownership);
 > set env vars PowerShell-style (`$env:NAME = 'value'; npm start`); and
